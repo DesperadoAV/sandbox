@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
+    <title>Svitlo Sandbox - Експериментальна мапа</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <style>
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
+        
+        /* Шар 1: Оригінальна мапа uMap як фон */
+        #bg-iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1; }
+        
+        /* Шар 2: Прозорий шар Leaflet для наших точок */
+        #map-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; background: transparent; pointer-events: none; }
+        /* Дозволяємо взаємодію лише з точками */
+        .leaflet-interactive { pointer-events: auto; }
+
+        /* Панелі керування */
+        .panel-base {
+            position: absolute; left: 50%; transform: translateX(-50%); width: 260px; 
+            background: rgba(30, 30, 30, 0.95); color: white; border: 1px solid #444;
+            border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); z-index: 10000; padding: 10px;
+        }
+        .top-panel { top: 15px; }
+        .bottom-panel { bottom: 25px; }
+        .p-head { cursor: pointer; font-weight: bold; font-size: 14px; text-align: center; }
+        .p-content { display: none; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px; }
+
+        .leg-item { display: flex; align-items: center; margin-bottom: 8px; font-size: 12px; justify-content: space-between; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
+        .q-time { color: #ffd54f; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <iframe id="bg-iframe" src="https://umap.openstreetmap.fr/uk-ua/map/map_1371725?scaleControl=false&miniMap=false&scrollWheelZoom=true&zoomControl=false&editMode=disabled&moreControl=false&searchControl=false&tilelayersControl=false&embedControl=false&datalayersControl=false"></iframe>
+
+    <div class="panel-base top-panel">
+        <div class="p-head" onclick="togglePanel('topContent')">🧪 Sandbox: Тест повідомлень</div>
+        <div id="topContent" class="p-content" style="text-align: center; font-size: 12px;">
+            Тут ми тестуємо пряме підключення до таблиці.<br>
+            <b>Статус:</b> <span id="sync-status" style="color: #4caf50;">Синхронізовано</span>
+        </div>
+    </div>
+
+    <div class="panel-base bottom-panel">
+        <div class="p-head" onclick="togglePanel('bottomContent')">📊 Статус черг (Direct)</div>
+        <div id="bottomContent" class="p-content">
+            <div id="sheet-data">Завантаження...</div>
+        </div>
+    </div>
+
+    <script>
+        const SHEET_ID = "1QsynzpjvrRbZIagIdEd2TdjY228suZhXz8PxDJN8H68";
+        const DATA_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=MapData`;
+
+        function togglePanel(id) {
+            const el = document.getElementById(id);
+            el.style.display = (el.style.display === 'block') ? 'none' : 'block';
+        }
+
+        async function loadData() {
+            try {
+                const res = await fetch(DATA_URL + "&t=" + Date.now());
+                const csv = await res.text();
+                const lines = csv.split('\n').slice(1);
+                
+                let html = '';
+                const processed = new Set();
+
+                lines.forEach(line => {
+                    const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
+                    if (cols.length >= 10) {
+                        const qName = cols[0].split(':')[0]; 
+                        if (!processed.has(qName) && qName.includes("Черга")) {
+                            html += `
+                                <div class="leg-item">
+                                    <div style="display:flex; align-items:center;">
+                                        <div class="dot" style="background:${cols[1]}"></div>
+                                        <b>${qName}</b>
+                                    </div>
+                                    <div class="q-time">${cols[9]}</div>
+                                </div>`;
+                            processed.add(qName);
+                        }
+                    }
+                });
+                document.getElementById('sheet-data').innerHTML = html || "Очікування даних...";
+                document.getElementById('sync-status').innerText = "Оновлено: " + new Date().toLocaleTimeString();
+            } catch (e) { 
+                document.getElementById('sync-status').innerText = "Помилка зв'язку";
+            }
+        }
+
+        // Запуск
+        loadData();
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>
