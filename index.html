@@ -4,41 +4,50 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Slavutych - Pro</title>
+    <title>Svitlo Slavutych Smart Map</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
         
+        /* Кнопка шарів */
         .side-btn {
             position: absolute; left: 15px; top: 15px;
-            width: 48px; height: 48px; background: white; border-radius: 12px;
+            width: 50px; height: 50px; background: white; border-radius: 14px;
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            cursor: pointer; z-index: 1001; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            border: 2px solid rgba(0,0,0,0.05);
         }
 
+        /* Меню черг */
         .q-menu {
-            position: absolute; left: 75px; top: 15px;
-            width: 260px; background: white; border-radius: 16px; display: none;
-            flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            padding: 16px; border: 1px solid #ddd;
+            position: absolute; left: 80px; top: 15px;
+            width: 280px; background: white; border-radius: 20px; display: none;
+            flex-direction: column; z-index: 1001; box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+            padding: 20px; border: 1px solid #eee;
         }
-        .q-menu-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; text-align: center; }
-        .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; transition: 0.2s; }
-        .q-menu-item:hover { background: #f0f7ff; }
-        .q-color-box { width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0; }
+        .q-menu-title { font-weight: 800; font-size: 18px; margin-bottom: 15px; color: #222; border-bottom: 2px solid #f0f0f0; padding-bottom: 10px; text-align: center; }
+        .q-menu-item { display: flex; align-items: center; padding: 12px; gap: 15px; cursor: pointer; border-radius: 12px; transition: all 0.2s ease; }
+        .q-menu-item:hover { background: #f8f9fa; transform: translateX(5px); }
+        .q-color-dot { width: 20px; height: 20px; border-radius: 6px; flex-shrink: 0; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); }
         
-        .status-tag { display: inline-block; padding: 3px 10px; border-radius: 6px; color: white; font-weight: bold; margin: 8px 0; font-size: 11px; }
-        .popup-box { font-size: 13px; line-height: 1.4; color: #333; min-width: 160px; }
+        /* Дизайн балуна (Popup) */
+        .leaflet-popup-content-wrapper { border-radius: 15px; padding: 5px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .popup-box { padding: 5px; min-width: 200px; }
+        .popup-addr { font-size: 16px; font-weight: 800; color: #1a1a1a; margin-bottom: 8px; display: block; }
+        .status-badge { display: inline-block; padding: 5px 12px; border-radius: 8px; color: white; font-weight: 700; font-size: 12px; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-row { font-size: 13px; color: #555; margin: 4px 0; display: flex; justify-content: space-between; }
+        .info-label { font-weight: 600; color: #999; }
+        .divider { height: 1px; background: #eee; margin: 10px 0; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-    <div class="side-btn" onclick="toggleMenu()"><img src="https://img.icons8.com/material-rounded/28/228BE6/layers.png"/></div>
+    <div class="side-btn" onclick="toggleMenu()"><img src="https://img.icons8.com/fluency-systems-filled/26/228BE6/layers.png"/></div>
 
     <div class="q-menu" id="qMenu">
         <div class="q-menu-title">Черги Славутича</div>
@@ -48,27 +57,32 @@
     <script>
         const DOC_ID = "2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs";
         
-        // ХАРДКОД КОЛЬОРІВ ТА ПАРАМЕТРІВ (Кольори маркерів: red, blue, violet, gold, orange, green)
+        // 1. КОНФІГУРАЦІЯ МІТОК ТА КОЛЬОРІВ
+        // Доступні кольори маркерів: red, blue, violet, gold, orange, green, black
         const QUEUE_CONFIG = {
-            "1.1": { gid: "0", color: "#ff0000", icon: "red" },
-            "2.1": { gid: "1407012161", color: "#0000ff", icon: "blue" },
-            "3.1": { gid: "774761347", color: "#9900ff", icon: "violet" },
-            "3.2": { gid: "1047238720", color: "#ffcc00", icon: "gold" },
-            "4.1": { gid: "877384835", color: "#ff9900", icon: "orange" },
-            "6.1": { gid: "1811736051", color: "#009933", icon: "green" }
+            "1.1": { gid: "0", color: "#E63946", icon: "red" },
+            "2.1": { gid: "1407012161", color: "#457B9D", icon: "blue" },
+            "3.1": { gid: "774761347", color: "#8338EC", icon: "violet" },
+            "3.2": { gid: "1047238720", color: "#FFB703", icon: "gold" },
+            "4.1": { gid: "877384835", color: "#FB8500", icon: "orange" },
+            "6.1": { gid: "1811736051", color: "#2A9D8F", icon: "green" }
         };
 
         const SHEETS = Object.keys(QUEUE_CONFIG).map(name => ({ name, ...QUEUE_CONFIG[name] }));
         const map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        
+        L.tileLayer('https://{s}.tile.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+            attribution: '©OpenStreetMap'
+        }).addTo(map);
 
         let layers = {}; 
         let activeQueues = new Set(SHEETS.map(s => s.name));
         let sheetStats = {}; 
 
-        function getIcon(colorName) {
+        // Функція створення гарної іконки
+        function createSmartIcon(color) {
             return new L.Icon({
-                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${colorName}.png`,
+                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
                 shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
                 iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
             });
@@ -84,40 +98,41 @@
                 const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${s.gid}&t=${Date.now()}`;
                 const res = await fetch(url);
                 const csv = await res.text();
-                // Розбиваємо CSV на масив рядків і колонок
                 const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim()));
                 
                 if (layers[s.name]) map.removeLayer(layers[s.name]);
                 layers[s.name] = L.layerGroup();
                 let pointsCount = 0;
 
-                // ШУКАЄМО ІНДЕКСИ (ВСЕЇДНИЙ АЛГОРИТМ)
-                const headers = rows[0];
-                const findIdx = (names) => headers.findIndex(h => names.some(n => h.toLowerCase().includes(n)));
-                
-                const idxLat = findIdx(['lat', 'широта']);
-                const idxLng = findIdx(['long', 'lng', 'довгота']);
-                const idxAddr = findIdx(['addr', 'адреса']);
-                const idxStatus = findIdx(['status', 'статус']);
-
+                // Визначаємо колонки (Адреса=0, Lat=4, Lng=5, Статус=7, Комент=8, Прогноз=9, Оновлено=10)
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i];
-                    const lat = parseFloat(row[idxLat]?.replace(',', '.'));
-                    const lng = parseFloat(row[idxLng]?.replace(',', '.'));
+                    if (row.length < 6) continue;
+
+                    const lat = parseFloat(row[4]?.replace(',', '.'));
+                    const lng = parseFloat(row[5]?.replace(',', '.'));
 
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        const addr = row[idxAddr] || "Без назви";
-                        const status = row[idxStatus] || "Світло є";
-                        const isOff = status.toLowerCase().includes("немає");
+                        const addr = row[0] || "Адреса відсутня";
+                        const status = row[7] || "Світло є";
+                        const comment = row[8] || "";
+                        const forecast = row[9] || "Немає даних";
+                        const updated = row[10] || "Щойно";
                         
-                        const iconColor = isOff ? "grey" : s.icon;
-                        const hexColor = isOff ? "#808080" : s.color;
+                        const isOff = status.toLowerCase().includes("немає");
+                        const markerColor = isOff ? "black" : s.icon;
+                        const badgeColor = isOff ? "#333" : s.color;
 
-                        L.marker([lat, lng], { icon: getIcon(iconColor) })
+                        L.marker([lat, lng], { icon: createSmartIcon(markerColor) })
                         .bindPopup(`
                             <div class="popup-box">
-                                <b>${addr}</b><br>
-                                <span class="status-tag" style="background:${hexColor}">${status}</span>
+                                <span class="popup-addr">${addr}</span>
+                                <span class="status-badge" style="background:${badgeColor}">${status}</span>
+                                <div class="info-row"><span class="info-label">Черга:</span> <span>${s.name}</span></div>
+                                ${comment ? `<div class="info-row"><span class="info-label">Коментар:</span> <span>${comment}</span></div>` : ''}
+                                <div class="divider"></div>
+                                <div class="info-row"><span class="info-label">Прогноз:</span> <span>${forecast}</span></div>
+                                <div class="info-row" style="font-size:11px; margin-top:8px;"><span class="info-label">Оновлено:</span> <span>${updated}</span></div>
                             </div>
                         `).addTo(layers[s.name]);
                         pointsCount++;
@@ -138,10 +153,10 @@
             const list = document.getElementById('menu-list');
             list.innerHTML = SHEETS.map(s => `
                 <div class="q-menu-item" onclick="toggleLayer('${s.name}')">
-                    <div class="q-color-box" style="background:${s.color}"></div>
-                    <span style="flex:1; font-weight:${activeQueues.has(s.name)?'bold':'normal'}">Черга ${s.name}</span>
-                    <span style="font-size:11px; color:#888">${sheetStats[s.name] || 0}</span>
-                    <span style="margin-left:8px">${activeQueues.has(s.name)?'👁️':'🙈'}</span>
+                    <div class="q-color-dot" style="background:${s.color}"></div>
+                    <span style="flex:1; font-weight:${activeQueues.has(s.name)?'700':'400'}; color:${activeQueues.has(s.name)?'#000':'#999'}">Черга ${s.name}</span>
+                    <span style="font-size:12px; background:#f0f0f0; padding:2px 8px; border-radius:10px; color:#666">${sheetStats[s.name] || 0}</span>
+                    <span style="margin-left:10px; filter:${activeQueues.has(s.name)?'none':'grayscale(100%)'}">${activeQueues.has(s.name)?'👁️':'🙈'}</span>
                 </div>
             `).join('');
         }
@@ -153,7 +168,7 @@
         }
 
         refreshAll();
-        setInterval(refreshAll, 60000);
+        setInterval(refreshAll, 60000); // Оновлення раз на хвилину
     </script>
 </body>
 </html>
