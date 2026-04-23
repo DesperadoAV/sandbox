@@ -2,168 +2,74 @@
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Sandbox - Direct Layers</title>
-    
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
+    <title>DEBUG MODE - Svitlo Sandbox</title>
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
-        
-        /* Кнопка шарів */
-        .side-btn {
-            position: absolute; left: 10px; top: 100px;
-            width: 40px; height: 40px; background: white; border-radius: 6px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 1001; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-
-        /* Меню черг */
-        .q-menu {
-            position: absolute; left: 60px; top: 100px;
-            width: 220px; background: white; border-radius: 10px; display: none;
-            flex-direction: column; z-index: 1001; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-            padding: 12px;
-        }
-        .q-menu-title { font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 8px; font-size: 15px; }
-        .q-menu-item { display: flex; align-items: center; padding: 8px; gap: 12px; cursor: pointer; border-radius: 6px; transition: 0.2s; }
-        .q-menu-item:hover { background: #f0f0f0; }
-        .q-dot-icon { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
-        
-        /* Стиль вікна з інфо */
-        .status-tag { display: inline-block; padding: 3px 10px; border-radius: 5px; color: white; font-weight: bold; margin: 8px 0; font-size: 12px; }
-        .popup-info { font-size: 12px; color: #444; line-height: 1.4; }
+        body { background: #1a1a1a; color: #00ff00; font-family: monospace; padding: 20px; }
+        #debug-log { background: #000; border: 2px solid #333; padding: 15px; height: 300px; overflow-y: auto; margin-bottom: 20px; font-size: 12px; }
+        .error { color: #ff4444; font-weight: bold; }
+        .success { color: #00ff00; }
+        #test-map { height: 200px; background: #222; border: 1px solid #444; display: none; }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
-
-    <div class="side-btn" onclick="toggleMenu()">
-        <img src="https://img.icons8.com/material-outlined/24/000000/layers.png"/>
-    </div>
-
-    <div class="q-menu" id="qMenu">
-        <div class="q-menu-title">Виберіть чергу</div>
-        <div id="menu-list">Завантаження...</div>
-    </div>
+    <h2>🛠️ Діагностика підключення</h2>
+    <div id="debug-log">Ініціалізація перевірки...<br></div>
+    
+    <div id="test-map"></div>
 
     <script>
-        const SHEET_ID = "1QsynzpjvrRbZIagIdEd2TdjY228suZhXz8PxDJN8H68";
-        const DATA_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=MapData`;
+        const log = (msg, type = '') => {
+            const div = document.getElementById('debug-log');
+            div.innerHTML += `<div class="${type}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+            div.scrollTop = div.scrollHeight;
+        };
 
-        // Ініціалізація карти (використовуємо OSM як підкладку для тестів)
-        const map = L.map('map', { zoomControl: true }).setView([51.5229, 30.7598], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        async function runTest() {
+            const SHEET_ID = "1QsynzpjvrRbZIagIdEd2TdjY228suZhXz8PxDJN8H68";
+            // Пряме посилання на CSV експорт
+            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&id=${SHEET_ID}&gid=0`;
 
-        let layers = {}; 
-        let activeQueues = new Set(["1.1", "2.1", "3.1", "3.2", "4.1", "6.1"]);
+            log(`1. Спроба з'єднатися з Google Таблицею...`);
+            log(`URL: <a href="${url}" target="_blank" style="color:cyan">Перевірити посилання вручну</a>`);
 
-        function toggleMenu() {
-            const m = document.getElementById('qMenu');
-            m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
-        }
-
-        async function loadPoints() {
             try {
-                const res = await fetch(DATA_URL + "&t=" + Date.now());
-                const csv = await res.text();
-                // Розбиваємо CSV на рядки, враховуючи лапки
-                const rows = csv.split(/\r?\n/);
-
-                // Очищення
-                Object.values(layers).forEach(g => map.removeLayer(g));
-                layers = {};
-                const queueMeta = {};
-
-                // Починаємо з i=2 (пропускаємо заголовки)
-                for (let i = 2; i < rows.length; i++) {
-                    const cols = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
-                    if (cols.length < 11 || !cols[4] || !cols[5]) continue;
-
-                    const address = cols[0];
-                    const qKey = address.includes(':') ? address.split(':')[0].replace('Черга ', '').trim() : "Інше";
-                    
-                    const lat = parseFloat(cols[4].replace(',', '.'));
-                    const lng = parseFloat(cols[5].replace(',', '.'));
-                    if (isNaN(lat) || isNaN(lng)) continue;
-
-                    const status = cols[7]; // Стовпець H
-                    const isOff = status.toLowerCase().includes("немає");
-                    const baseColor = cols[1]; // Стовпець B
-                    const displayColor = isOff ? "#808080" : baseColor;
-
-                    if (!layers[qKey]) layers[qKey] = L.layerGroup();
-
-                    const marker = L.circleMarker([lat, lng], {
-                        radius: 7,
-                        fillColor: displayColor,
-                        color: "#fff",
-                        weight: 1,
-                        fillOpacity: 0.9
-                    });
-
-                    marker.bindPopup(`
-                        <div style="min-width:160px">
-                            <b style="font-size:14px">${address}</b><br>
-                            <span class="status-tag" style="background:${displayColor}">${status}</span>
-                            <div class="popup-info">
-                                <b>Коментар:</b> ${cols[8] || '—'}<br>
-                                <b>Прогноз:</b> ${cols[9] || '—'}<br>
-                                <small style="color:#999">Оновлено: ${cols[10] || '—'}</small>
-                            </div>
-                        </div>
-                    `);
-
-                    marker.addTo(layers[qKey]);
-                    if (!queueMeta[qKey]) queueMeta[qKey] = baseColor;
+                const response = await fetch(url + "&t=" + Date.now());
+                
+                if (!response.ok) {
+                    throw new Error(`Помилка HTTP! Статус: ${response.status}`);
                 }
 
-                renderMenu(queueMeta);
-                refreshMap();
-            } catch (e) {
-                console.error("Fetch Error:", e);
-                document.getElementById('menu-list').innerHTML = "Помилка завантаження";
+                log(`2. Відповідь отримана! Розмір: ${response.statusText}`, 'success');
+                
+                const data = await response.text();
+                const lines = data.split('\n');
+                log(`3. Отримано рядків: ${lines.length}`, 'success');
+
+                if (lines.length < 5) {
+                    log(`⚠️ Увага: Таблиця занадто коротка. Перевірте, чи це той аркуш.`, 'error');
+                }
+
+                log(`4. Перевірка перших даних:`);
+                log(`Перший рядок: <span style="color:white">${lines[0].substring(0, 50)}...</span>`);
+                
+                // Перевірка координат у рядку 3 (наприклад)
+                const sampleRow = lines[2].split(',');
+                log(`5. Перевірка координат у рядку 3: Lat: ${sampleRow[4]}, Lng: ${sampleRow[5]}`);
+
+                if (!sampleRow[4] || isNaN(parseFloat(sampleRow[4].replace('"', '')))) {
+                    log(`❌ ПОМИЛКА: Координати не знайдено або вони в невірному форматі!`, 'error');
+                } else {
+                    log(`✅ ТЕСТ ПРОЙДЕНО. Дані доступні для мапи.`, 'success');
+                }
+
+            } catch (err) {
+                log(`❌ КРИТИЧНА ПОМИЛКА: ${err.message}`, 'error');
+                log(`💡 МОЖЛИВА ПРИЧИНА: Таблиця не опублікована. Зайдіть у файл -> Поділитися -> Опублікувати в інтернеті.`, 'error');
             }
         }
 
-        function renderMenu(meta) {
-            const list = document.getElementById('menu-list');
-            const sortedKeys = Object.keys(meta).sort();
-            
-            list.innerHTML = sortedKeys.map(q => {
-                const isActive = activeQueues.has(q);
-                return `
-                    <div class="q-menu-item" onclick="toggleLayer('${q}')">
-                        <div class="q-dot-icon" style="background:${meta[q]}"></div>
-                        <span style="flex:1; font-weight:${isActive?'bold':'normal'}">Черга ${q}</span>
-                        <span style="font-size:16px">${isActive?'👁️':'🙈'}</span>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function toggleLayer(q) {
-            if (activeQueues.has(q)) activeQueues.delete(q);
-            else activeQueues.add(q);
-            refreshMap();
-            // Швидко оновити тільки іконки в меню
-            const menu = document.getElementById('qMenu'); 
-            loadPoints(); 
-        }
-
-        function refreshMap() {
-            Object.keys(layers).forEach(q => {
-                if (activeQueues.has(q)) layers[q].addTo(map);
-                else map.removeLayer(layers[q]);
-            });
-        }
-
-        loadPoints();
-        setInterval(loadPoints, 30000);
+        runTest();
     </script>
 </body>
 </html>
