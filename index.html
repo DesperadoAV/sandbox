@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Sandbox - Live Debug</title>
+    <title>Svitlo Sandbox - Final Fix</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,45 +12,25 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
-        
-        .side-btn {
-            position: absolute; left: 15px; top: 15px;
-            width: 48px; height: 48px; background: white; border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-        }
-
-        .q-menu {
-            position: absolute; left: 75px; top: 15px;
-            width: 260px; background: white; border-radius: 16px; display: none;
-            flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            padding: 16px; border: 1px solid #ddd;
-        }
+        .side-btn { position: absolute; left: 15px; top: 15px; width: 48px; height: 48px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        .q-menu { position: absolute; left: 75px; top: 15px; width: 260px; background: white; border-radius: 16px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 16px; border: 1px solid #ddd; }
         .q-menu-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; text-align: center; }
         .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; }
         .q-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
-        
-        /* Статуси в меню */
-        .loading-spin { font-size: 10px; color: #999; }
-        .error-tag { color: red; font-size: 10px; }
+        .status-tag { display: inline-block; padding: 3px 10px; border-radius: 6px; color: white; font-weight: bold; margin: 8px 0; font-size: 11px; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-
-    <div class="side-btn" onclick="toggleMenu()">
-        <img src="https://img.icons8.com/material-rounded/28/228BE6/layers.png"/>
-    </div>
-
+    <div class="side-btn" onclick="toggleMenu()"><img src="https://img.icons8.com/material-rounded/28/228BE6/layers.png"/></div>
     <div class="q-menu" id="qMenu">
-        <div class="q-menu-title">Перевірка черг...</div>
+        <div class="q-menu-title">Черги Славутича</div>
         <div id="menu-list"></div>
     </div>
 
     <script>
         const DOC_ID = "2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs";
-        
         const SHEETS = [
             { gid: "0", name: "1.1" },
             { gid: "1407012161", name: "2.1" },
@@ -65,7 +45,7 @@
 
         let layers = {}; 
         let activeQueues = new Set(SHEETS.map(s => s.name));
-        let sheetStatus = {}; // Для діагностики
+        let sheetInfo = {};
 
         function toggleMenu() {
             const m = document.getElementById('qMenu');
@@ -73,91 +53,82 @@
         }
 
         async function fetchSheet(s) {
-            sheetStatus[s.name] = { state: 'loading', points: 0, color: '#ccc' };
-            renderMenu();
-
             try {
                 const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${s.gid}&t=${Date.now()}`;
                 const res = await fetch(url);
-                if (!res.ok) throw new Error("Помилка мережі");
-                
                 const csv = await res.text();
-                const rows = csv.split(/\r?\n/).slice(1);
+                const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim()));
 
                 if (layers[s.name]) map.removeLayer(layers[s.name]);
                 layers[s.name] = L.layerGroup();
+                let pointsCount = 0;
 
-                let pointsAdded = 0;
-                rows.forEach((row, index) => {
-                    // Парсимо CSV, враховуючи можливі коми в лапках
-                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
+                // Авто-пошук індексів колонок за назвами заголовків
+                const headers = rows[0];
+                const idx = {
+                    lat: headers.findIndex(h => h.toLowerCase().includes('lat')),
+                    lng: headers.findIndex(h => h.toLowerCase().includes('long') || h.toLowerCase().includes('lng')),
+                    addr: headers.findIndex(h => h.toLowerCase().includes('addr')),
+                    status: headers.findIndex(h => h.toLowerCase().includes('status')),
+                    color: headers.findIndex(h => h.toLowerCase().includes('color'))
+                };
+
+                // Якщо заголовки не знайдені, використовуємо стандартні індекси
+                const getVal = (row, i, def) => (idx[i] !== -1 ? row[idx[i]] : row[def]);
+
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (row.length < 5) continue;
+
+                    const rawLat = getVal(row, 'lat', 4);
+                    const rawLng = getVal(row, 'lng', 5);
                     
-                    // Перевірка: чи є координати в стовпцях E та F (індекси 4 та 5)
-                    const lat = parseFloat(cols[4]?.replace(',', '.'));
-                    const lng = parseFloat(cols[5]?.replace(',', '.'));
+                    const lat = parseFloat(rawLat?.replace(',', '.'));
+                    const lng = parseFloat(rawLng?.replace(',', '.'));
 
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        const address = cols[0] || "Без адреси";
-                        const baseColor = cols[1] || "#333";
-                        const status = cols[7] || "Невідомо";
+                        const address = getVal(row, 'addr', 0);
+                        const baseColor = getVal(row, 'color', 1) || "#333";
+                        const status = getVal(row, 'status', 7) || "Є світло";
                         
-                        if (pointsAdded === 0) sheetStatus[s.name].color = baseColor;
+                        if (pointsCount === 0) sheetInfo[s.name] = { color: baseColor };
 
                         const isOff = status.toLowerCase().includes("немає");
                         const pointColor = isOff ? "#808080" : baseColor;
 
                         L.circleMarker([lat, lng], {
                             radius: 8, fillColor: pointColor, color: "white", weight: 2, fillOpacity: 0.9
-                        }).bindPopup(`<b>${address}</b><br>Статус: ${status}`).addTo(layers[s.name]);
+                        }).bindPopup(`<b>${address}</b><br><span class="status-tag" style="background:${pointColor}">${status}</span>`).addTo(layers[s.name]);
                         
-                        pointsAdded++;
+                        pointsCount++;
                     }
-                });
+                }
 
-                sheetStatus[s.name].state = 'ok';
-                sheetStatus[s.name].points = pointsAdded;
-                
+                sheetInfo[s.name].count = pointsCount;
                 if (activeQueues.has(s.name)) layers[s.name].addTo(map);
-
-            } catch (e) {
-                console.error(`Помилка черги ${s.name}:`, e);
-                sheetStatus[s.name].state = 'error';
-            }
-            renderMenu();
+            } catch (e) { console.error(e); }
         }
 
         async function refreshAll() {
             await Promise.all(SHEETS.map(s => fetchSheet(s)));
+            renderMenu();
         }
 
         function renderMenu() {
             const list = document.getElementById('menu-list');
-            list.innerHTML = SHEETS.map(s => {
-                const stat = sheetStatus[s.name] || { state: 'pending' };
-                let info = '';
-                if (stat.state === 'loading') info = '<span class="loading-spin">⌛...</span>';
-                else if (stat.state === 'error') info = '<span class="error-tag">❌ Помилка</span>';
-                else info = `<span style="font-size:10px; color:#666">${stat.points} точок</span>`;
-
-                return `
+            list.innerHTML = SHEETS.map(s => `
                 <div class="q-menu-item" onclick="toggleLayer('${s.name}')">
-                    <div class="q-dot" style="background:${stat.color}"></div>
+                    <div class="q-dot" style="background:${(sheetInfo[s.name] || {}).color || '#ccc'}"></div>
                     <span style="flex:1; font-weight:${activeQueues.has(s.name)?'bold':'normal'}">Черга ${s.name}</span>
-                    ${info}
-                    <span style="margin-left:5px">${activeQueues.has(s.name)?'👁️':'🙈'}</span>
+                    <span style="font-size:10px; color:#888">${(sheetInfo[s.name] || {}).count || 0}</span>
+                    <span style="margin-left:8px">${activeQueues.has(s.name)?'👁️':'🙈'}</span>
                 </div>
-                `;
-            }).join('');
+            `).join('');
         }
 
         function toggleLayer(name) {
-            if (activeQueues.has(name)) {
-                activeQueues.delete(name);
-                if (layers[name]) map.removeLayer(layers[name]);
-            } else {
-                activeQueues.add(name);
-                if (layers[name]) layers[name].addTo(map);
-            }
+            if (activeQueues.has(name)) { activeQueues.delete(name); map.removeLayer(layers[name]); }
+            else { activeQueues.add(name); layers[name].addTo(map); }
             renderMenu();
         }
 
