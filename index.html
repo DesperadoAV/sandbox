@@ -4,102 +4,164 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Sandbox - Експериментальна мапа</title>
+    <title>Svitlo Sandbox - Direct Layers</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
         
-        /* Шар 1: Оригінальна мапа uMap як фон */
-        #bg-iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border: none; z-index: 1; }
-        
-        /* Шар 2: Прозорий шар Leaflet для наших точок */
-        #map-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 2; background: transparent; pointer-events: none; }
-        /* Дозволяємо взаємодію лише з точками */
-        .leaflet-interactive { pointer-events: auto; }
-
-        /* Панелі керування */
-        .panel-base {
-            position: absolute; left: 50%; transform: translateX(-50%); width: 260px; 
-            background: rgba(30, 30, 30, 0.95); color: white; border: 1px solid #444;
-            border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.6); z-index: 10000; padding: 10px;
+        /* Кнопка черг зліва */
+        .side-btn {
+            position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+            width: 44px; height: 44px; background: white; border-radius: 4px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 1001; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
         }
-        .top-panel { top: 15px; }
-        .bottom-panel { bottom: 25px; }
-        .p-head { cursor: pointer; font-weight: bold; font-size: 14px; text-align: center; }
-        .p-content { display: none; margin-top: 10px; border-top: 1px solid #444; padding-top: 10px; }
 
-        .leg-item { display: flex; align-items: center; margin-bottom: 8px; font-size: 12px; justify-content: space-between; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; margin-right: 8px; }
-        .q-time { color: #ffd54f; font-weight: bold; }
+        /* Меню черг (як на скріншоті) */
+        .q-menu {
+            position: absolute; left: 65px; top: 50%; transform: translateY(-50%);
+            width: 200px; background: white; border-radius: 8px; display: none;
+            flex-direction: column; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            padding: 10px;
+        }
+        .q-menu-title { font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 8px; font-size: 14px; }
+        .q-menu-item { display: flex; align-items: center; padding: 8px; gap: 10px; cursor: pointer; border-radius: 4px; transition: 0.2s; }
+        .q-menu-item:hover { background: #f5f5f5; }
+        .q-dot-icon { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
+
+        /* Стиль балуна */
+        .custom-popup .leaflet-popup-content-wrapper { border-radius: 8px; padding: 5px; }
+        .status-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; color: white; font-weight: bold; margin: 5px 0; font-size: 11px; }
     </style>
 </head>
 <body>
 
-    <iframe id="bg-iframe" src="https://umap.openstreetmap.fr/uk-ua/map/map_1371725?scaleControl=false&miniMap=false&scrollWheelZoom=true&zoomControl=false&editMode=disabled&moreControl=false&searchControl=false&tilelayersControl=false&embedControl=false&datalayersControl=false"></iframe>
+    <div id="map"></div>
 
-    <div class="panel-base top-panel">
-        <div class="p-head" onclick="togglePanel('topContent')">🧪 Sandbox: Тест повідомлень</div>
-        <div id="topContent" class="p-content" style="text-align: center; font-size: 12px;">
-            Тут ми тестуємо пряме підключення до таблиці.<br>
-            <b>Статус:</b> <span id="sync-status" style="color: #4caf50;">Синхронізовано</span>
-        </div>
+    <div class="side-btn" onclick="toggleMenu()">
+        <img src="https://img.icons8.com/material-rounded/24/000000/layers.png"/>
     </div>
 
-    <div class="panel-base bottom-panel">
-        <div class="p-head" onclick="togglePanel('bottomContent')">📊 Статус черг (Direct)</div>
-        <div id="bottomContent" class="p-content">
-            <div id="sheet-data">Завантаження...</div>
-        </div>
+    <div class="q-menu" id="qMenu">
+        <div class="q-menu-title">Виберіть чергу</div>
+        <div id="menu-list"></div>
     </div>
 
     <script>
         const SHEET_ID = "1QsynzpjvrRbZIagIdEd2TdjY228suZhXz8PxDJN8H68";
         const DATA_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=MapData`;
 
-        function togglePanel(id) {
-            const el = document.getElementById(id);
-            el.style.display = (el.style.display === 'block') ? 'none' : 'block';
+        // Карта з підкладкою uMap (через тайли OpenStreetMap)
+        const map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        let layers = {}; 
+        let activeQueues = new Set(["1.1", "2.1", "3.1", "3.2", "4.1", "6.1"]);
+
+        function toggleMenu() {
+            const m = document.getElementById('qMenu');
+            m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
         }
 
-        async function loadData() {
+        async function loadPoints() {
             try {
                 const res = await fetch(DATA_URL + "&t=" + Date.now());
                 const csv = await res.text();
-                const lines = csv.split('\n').slice(1);
-                
-                let html = '';
-                const processed = new Set();
+                const rows = csv.split('\n');
 
-                lines.forEach(line => {
-                    const cols = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
-                    if (cols.length >= 10) {
-                        const qName = cols[0].split(':')[0]; 
-                        if (!processed.has(qName) && qName.includes("Черга")) {
-                            html += `
-                                <div class="leg-item">
-                                    <div style="display:flex; align-items:center;">
-                                        <div class="dot" style="background:${cols[1]}"></div>
-                                        <b>${qName}</b>
-                                    </div>
-                                    <div class="q-time">${cols[9]}</div>
-                                </div>`;
-                            processed.add(qName);
-                        }
+                // Очищуємо стару карту
+                Object.values(layers).forEach(group => map.removeLayer(group));
+                layers = {};
+
+                const queueMeta = {}; // Кольори та статус для меню
+
+                // Починаємо з i=2, щоб пропустити 1 та 2 рядки таблиці
+                for (let i = 2; i < rows.length; i++) {
+                    const cols = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
+                    if (cols.length < 11) continue;
+
+                    const address = cols[0]; // A
+                    const qKey = address.split(':')[0].replace('Черга ', '').trim();
+                    
+                    const statusText = cols[7]; // H (Світло є/немає)
+                    const isOff = statusText.includes("немає");
+                    
+                    const color = isOff ? "#808080" : cols[1]; // B (або сірий якщо немає світла)
+                    const lat = parseFloat(cols[4]); // E
+                    const lng = parseFloat(cols[5]); // F
+                    
+                    const desc = cols[8]; // I
+                    const prog = cols[9]; // J
+                    const update = cols[10]; // K
+
+                    if (!layers[qKey]) layers[qKey] = L.layerGroup();
+
+                    const marker = L.circleMarker([lat, lng], {
+                        radius: 8,
+                        fillColor: color,
+                        color: "#fff",
+                        weight: 2,
+                        fillOpacity: 1
+                    });
+
+                    // Кастомний балун
+                    marker.bindPopup(`
+                        <div class="custom-popup">
+                            <b style="font-size:14px;">${address}</b><br>
+                            <span class="status-tag" style="background:${color}">${statusText}</span><br>
+                            ${desc ? `<div style="font-size:12px; margin:5px 0;">${desc}</div>` : ''}
+                            <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
+                            <div style="font-size:10px; color:#666;">
+                                <b>Прогноз:</b> ${prog}<br>
+                                <b>Оновлено:</b> ${update}
+                            </div>
+                        </div>
+                    `);
+
+                    marker.addTo(layers[qKey]);
+
+                    // Зберігаємо інфо для меню (тільки якщо світло є, показуємо колір черги)
+                    if (!queueMeta[qKey]) {
+                        queueMeta[qKey] = isOff ? "#808080" : cols[1];
                     }
-                });
-                document.getElementById('sheet-data').innerHTML = html || "Очікування даних...";
-                document.getElementById('sync-status').innerText = "Оновлено: " + new Date().toLocaleTimeString();
-            } catch (e) { 
-                document.getElementById('sync-status').innerText = "Помилка зв'язку";
-            }
+                }
+
+                renderMenu(queueMeta);
+                updateMapVisibility();
+            } catch (e) { console.error("Помилка даних:", e); }
         }
 
-        // Запуск
-        loadData();
-        setInterval(loadData, 30000);
+        function renderMenu(meta) {
+            const list = document.getElementById('menu-list');
+            list.innerHTML = Object.keys(meta).sort().map(q => `
+                <div class="q-menu-item" onclick="toggleLayer('${q}')">
+                    <div class="q-dot-icon" style="background:${meta[q]}"></div>
+                    <span style="font-size:13px; font-weight:${activeQueues.has(q)?'bold':'normal'}">Черга ${q}</span>
+                    <span style="margin-left:auto">${activeQueues.has(q)?'👁️':'🙈'}</span>
+                </div>
+            `).join('');
+        }
+
+        function toggleLayer(q) {
+            if (activeQueues.has(q)) activeQueues.delete(q);
+            else activeQueues.add(q);
+            updateMapVisibility();
+            loadPoints(); // Оновлюємо іконки в меню
+        }
+
+        function updateMapVisibility() {
+            Object.keys(layers).forEach(q => {
+                if (activeQueues.has(q)) layers[q].addTo(map);
+                else map.removeLayer(layers[q]);
+            });
+        }
+
+        loadPoints();
+        setInterval(loadPoints, 30000);
     </script>
 </body>
 </html>
