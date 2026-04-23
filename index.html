@@ -4,38 +4,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Slavutych LIVE</title>
+    <title>Svitlo Slavutych Smart Map</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #f0f0f0; font-family: sans-serif; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
-        .side-btn { position: absolute; left: 15px; top: 15px; width: 46px; height: 46px; background: white; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
-        .q-menu { position: absolute; left: 70px; top: 15px; width: 240px; background: white; border-radius: 12px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 5px 20px rgba(0,0,0,0.2); padding: 12px; border: 1px solid #ddd; }
-        .q-menu-title { font-weight: bold; margin-bottom: 10px; text-align: center; border-bottom: 1px solid #eee; padding-bottom: 5px; }
-        .q-menu-item { display: flex; align-items: center; padding: 8px; gap: 10px; cursor: pointer; border-radius: 6px; }
-        .q-color-dot { width: 15px; height: 15px; border-radius: 3px; flex-shrink: 0; }
-        .popup-box { font-size: 13px; line-height: 1.4; min-width: 180px; }
-        .status-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; color: white; font-weight: bold; margin: 5px 0; text-transform: uppercase; font-size: 10px; }
+        
+        .side-btn {
+            position: absolute; left: 15px; top: 15px;
+            width: 48px; height: 48px; background: white; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        .q-menu {
+            position: absolute; left: 75px; top: 15px;
+            width: 260px; background: white; border-radius: 16px; display: none;
+            flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            padding: 16px; border: 1px solid #ddd;
+        }
+        .q-menu-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; text-align: center; }
+        .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; }
+        .q-color-box { width: 18px; height: 18px; border-radius: 5px; }
+        
+        /* Стиль балуна */
+        .popup-box { font-size: 13px; line-height: 1.5; min-width: 200px; color: #333; }
+        .p-addr { font-size: 15px; font-weight: bold; display: block; border-bottom: 1px solid #eee; margin-bottom: 5px; padding-bottom: 3px; }
+        .status-tag { display: inline-block; padding: 3px 10px; border-radius: 6px; color: white; font-weight: bold; margin: 5px 0; font-size: 11px; text-transform: uppercase; }
+        .info-line { margin: 2px 0; display: block; }
+        .label { color: #888; font-weight: normal; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-    <div class="side-btn" onclick="toggleMenu()">
-        <img src="https://img.icons8.com/material-rounded/24/228BE6/layers.png"/>
-    </div>
+    <div class="side-btn" onclick="toggleMenu()"><img src="https://img.icons8.com/material-rounded/28/228BE6/layers.png"/></div>
 
     <div class="q-menu" id="qMenu">
-        <div class="q-menu-title">Черги</div>
+        <div class="q-menu-title">Черги Славутича</div>
         <div id="menu-list"></div>
     </div>
 
     <script>
         const DOC_ID = "2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs";
         
+        // Можете змінювати іконку на: red, blue, green, orange, yellow, violet, grey, black
         const QUEUE_CONFIG = {
             "1.1": { gid: "0", color: "#ff0000", icon: "red" },
             "2.1": { gid: "1407012161", color: "#0000ff", icon: "blue" },
@@ -53,7 +69,7 @@
         let activeQueues = new Set(SHEETS.map(s => s.name));
         let sheetStats = {}; 
 
-        function getMarkerIcon(color) {
+        function getIcon(color) {
             return new L.Icon({
                 iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
                 shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -75,16 +91,20 @@
                 
                 if (layers[s.name]) map.removeLayer(layers[s.name]);
                 layers[s.name] = L.layerGroup();
-                let count = 0;
+                let pointsCount = 0;
 
                 const headers = rows[0].map(h => h.toLowerCase());
+                
+                // ШУКАЄМО КОЛОНКИ (C, H, I, J, K тощо)
                 const idx = {
                     addr: headers.indexOf('address'),
+                    desc: headers.indexOf('description'), // Колонка C
                     lat: headers.indexOf('latitude'),
                     lng: headers.indexOf('longitude'),
-                    status: headers.indexOf('status'),
-                    comm: headers.indexOf('comment'),
-                    upd: headers.indexOf('updated')
+                    status: headers.indexOf('status'),    // Колонка H
+                    comm: headers.indexOf('comment'),    // Колонка I
+                    fore: headers.indexOf('forecast'),   // Колонка J
+                    upd: headers.indexOf('updated')      // Колонка K
                 };
 
                 for (let i = 1; i < rows.length; i++) {
@@ -93,28 +113,33 @@
                     const lng = parseFloat(row[idx.lng]?.replace(',', '.'));
 
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        const addr = row[idx.addr] || "Адреса";
                         const status = row[idx.status] || "Є світло";
                         const isOff = status.toLowerCase().includes("немає");
                         
-                        const iconColor = isOff ? "grey" : s.icon;
+                        const currentIcon = isOff ? "grey" : s.icon;
                         const badgeColor = isOff ? "#808080" : s.color;
 
-                        L.marker([lat, lng], { icon: getMarkerIcon(iconColor) })
+                        L.marker([lat, lng], { icon: getIcon(currentIcon) })
                         .bindPopup(`
                             <div class="popup-box">
-                                <b>${addr}</b><br>
-                                <span class="status-badge" style="background:${badgeColor}">${status}</span><br>
-                                <small><b>Черга:</b> ${s.name}</small><br>
-                                <small style="color:#999; font-size:10px;">Оновлено: ${row[idx.upd] || 'невідомо'}</small>
+                                <span class="p-addr">${row[idx.addr] || 'Адреса'}</span>
+                                <span class="status-tag" style="background:${badgeColor}">${status}</span>
+                                <div class="info-line"><span class="label">Опис:</span> ${row[idx.desc] || '—'}</div>
+                                <div class="info-line"><span class="label">Коментар:</span> ${row[idx.comm] || '—'}</div>
+                                <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
+                                <div class="info-line"><span class="label">Прогноз:</span> ${row[idx.fore] || '—'}</div>
+                                <div class="info-line" style="font-size:10px; color:#999; margin-top:5px;">
+                                    Оновлено: ${row[idx.upd] || 'щойно'}
+                                </div>
                             </div>
                         `).addTo(layers[s.name]);
-                        count++;
+                        pointsCount++;
                     }
                 }
-                sheetStats[s.name] = count;
+
+                sheetStats[s.name] = pointsCount;
                 if (activeQueues.has(s.name)) layers[s.name].addTo(map);
-            } catch (e) { console.error("Error sheet " + s.name, e); }
+            } catch (e) { console.error(e); }
         }
 
         async function refreshAll() {
@@ -126,7 +151,7 @@
             const list = document.getElementById('menu-list');
             list.innerHTML = SHEETS.map(s => `
                 <div class="q-menu-item" onclick="toggleLayer('${s.name}')">
-                    <div class="q-color-dot" style="background:${s.color}"></div>
+                    <div class="q-color-box" style="background:${s.color}"></div>
                     <span style="flex:1; font-weight:${activeQueues.has(s.name)?'bold':'normal'}">Черга ${s.name}</span>
                     <span style="font-size:11px; color:#888">${sheetStats[s.name] || 0}</span>
                 </div>
