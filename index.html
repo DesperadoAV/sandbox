@@ -13,29 +13,29 @@
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
         
-        /* Кнопка черг зліва */
+        /* Кнопка шарів */
         .side-btn {
-            position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
-            width: 44px; height: 44px; background: white; border-radius: 4px;
+            position: absolute; left: 10px; top: 100px;
+            width: 40px; height: 40px; background: white; border-radius: 6px;
             display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 1001; box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            cursor: pointer; z-index: 1001; box-shadow: 0 2px 5px rgba(0,0,0,0.2);
         }
 
-        /* Меню черг (як на скріншоті) */
+        /* Меню черг */
         .q-menu {
-            position: absolute; left: 65px; top: 50%; transform: translateY(-50%);
-            width: 200px; background: white; border-radius: 8px; display: none;
-            flex-direction: column; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            padding: 10px;
+            position: absolute; left: 60px; top: 100px;
+            width: 220px; background: white; border-radius: 10px; display: none;
+            flex-direction: column; z-index: 1001; box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            padding: 12px;
         }
-        .q-menu-title { font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 8px; font-size: 14px; }
-        .q-menu-item { display: flex; align-items: center; padding: 8px; gap: 10px; cursor: pointer; border-radius: 4px; transition: 0.2s; }
-        .q-menu-item:hover { background: #f5f5f5; }
-        .q-dot-icon { width: 12px; height: 12px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); }
-
-        /* Стиль балуна */
-        .custom-popup .leaflet-popup-content-wrapper { border-radius: 8px; padding: 5px; }
-        .status-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; color: white; font-weight: bold; margin: 5px 0; font-size: 11px; }
+        .q-menu-title { font-weight: bold; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 8px; font-size: 15px; }
+        .q-menu-item { display: flex; align-items: center; padding: 8px; gap: 12px; cursor: pointer; border-radius: 6px; transition: 0.2s; }
+        .q-menu-item:hover { background: #f0f0f0; }
+        .q-dot-icon { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
+        
+        /* Стиль вікна з інфо */
+        .status-tag { display: inline-block; padding: 3px 10px; border-radius: 5px; color: white; font-weight: bold; margin: 8px 0; font-size: 12px; }
+        .popup-info { font-size: 12px; color: #444; line-height: 1.4; }
     </style>
 </head>
 <body>
@@ -43,20 +43,20 @@
     <div id="map"></div>
 
     <div class="side-btn" onclick="toggleMenu()">
-        <img src="https://img.icons8.com/material-rounded/24/000000/layers.png"/>
+        <img src="https://img.icons8.com/material-outlined/24/000000/layers.png"/>
     </div>
 
     <div class="q-menu" id="qMenu">
         <div class="q-menu-title">Виберіть чергу</div>
-        <div id="menu-list"></div>
+        <div id="menu-list">Завантаження...</div>
     </div>
 
     <script>
         const SHEET_ID = "1QsynzpjvrRbZIagIdEd2TdjY228suZhXz8PxDJN8H68";
         const DATA_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=MapData`;
 
-        // Карта з підкладкою uMap (через тайли OpenStreetMap)
-        const map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);
+        // Ініціалізація карти (використовуємо OSM як підкладку для тестів)
+        const map = L.map('map', { zoomControl: true }).setView([51.5229, 30.7598], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         let layers = {}; 
@@ -71,89 +71,91 @@
             try {
                 const res = await fetch(DATA_URL + "&t=" + Date.now());
                 const csv = await res.text();
-                const rows = csv.split('\n');
+                // Розбиваємо CSV на рядки, враховуючи лапки
+                const rows = csv.split(/\r?\n/);
 
-                // Очищуємо стару карту
-                Object.values(layers).forEach(group => map.removeLayer(group));
+                // Очищення
+                Object.values(layers).forEach(g => map.removeLayer(g));
                 layers = {};
+                const queueMeta = {};
 
-                const queueMeta = {}; // Кольори та статус для меню
-
-                // Починаємо з i=2, щоб пропустити 1 та 2 рядки таблиці
+                // Починаємо з i=2 (пропускаємо заголовки)
                 for (let i = 2; i < rows.length; i++) {
                     const cols = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
-                    if (cols.length < 11) continue;
+                    if (cols.length < 11 || !cols[4] || !cols[5]) continue;
 
-                    const address = cols[0]; // A
-                    const qKey = address.split(':')[0].replace('Черга ', '').trim();
+                    const address = cols[0];
+                    const qKey = address.includes(':') ? address.split(':')[0].replace('Черга ', '').trim() : "Інше";
                     
-                    const statusText = cols[7]; // H (Світло є/немає)
-                    const isOff = statusText.includes("немає");
-                    
-                    const color = isOff ? "#808080" : cols[1]; // B (або сірий якщо немає світла)
-                    const lat = parseFloat(cols[4]); // E
-                    const lng = parseFloat(cols[5]); // F
-                    
-                    const desc = cols[8]; // I
-                    const prog = cols[9]; // J
-                    const update = cols[10]; // K
+                    const lat = parseFloat(cols[4].replace(',', '.'));
+                    const lng = parseFloat(cols[5].replace(',', '.'));
+                    if (isNaN(lat) || isNaN(lng)) continue;
+
+                    const status = cols[7]; // Стовпець H
+                    const isOff = status.toLowerCase().includes("немає");
+                    const baseColor = cols[1]; // Стовпець B
+                    const displayColor = isOff ? "#808080" : baseColor;
 
                     if (!layers[qKey]) layers[qKey] = L.layerGroup();
 
                     const marker = L.circleMarker([lat, lng], {
-                        radius: 8,
-                        fillColor: color,
+                        radius: 7,
+                        fillColor: displayColor,
                         color: "#fff",
-                        weight: 2,
-                        fillOpacity: 1
+                        weight: 1,
+                        fillOpacity: 0.9
                     });
 
-                    // Кастомний балун
                     marker.bindPopup(`
-                        <div class="custom-popup">
-                            <b style="font-size:14px;">${address}</b><br>
-                            <span class="status-tag" style="background:${color}">${statusText}</span><br>
-                            ${desc ? `<div style="font-size:12px; margin:5px 0;">${desc}</div>` : ''}
-                            <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
-                            <div style="font-size:10px; color:#666;">
-                                <b>Прогноз:</b> ${prog}<br>
-                                <b>Оновлено:</b> ${update}
+                        <div style="min-width:160px">
+                            <b style="font-size:14px">${address}</b><br>
+                            <span class="status-tag" style="background:${displayColor}">${status}</span>
+                            <div class="popup-info">
+                                <b>Коментар:</b> ${cols[8] || '—'}<br>
+                                <b>Прогноз:</b> ${cols[9] || '—'}<br>
+                                <small style="color:#999">Оновлено: ${cols[10] || '—'}</small>
                             </div>
                         </div>
                     `);
 
                     marker.addTo(layers[qKey]);
-
-                    // Зберігаємо інфо для меню (тільки якщо світло є, показуємо колір черги)
-                    if (!queueMeta[qKey]) {
-                        queueMeta[qKey] = isOff ? "#808080" : cols[1];
-                    }
+                    if (!queueMeta[qKey]) queueMeta[qKey] = baseColor;
                 }
 
                 renderMenu(queueMeta);
-                updateMapVisibility();
-            } catch (e) { console.error("Помилка даних:", e); }
+                refreshMap();
+            } catch (e) {
+                console.error("Fetch Error:", e);
+                document.getElementById('menu-list').innerHTML = "Помилка завантаження";
+            }
         }
 
         function renderMenu(meta) {
             const list = document.getElementById('menu-list');
-            list.innerHTML = Object.keys(meta).sort().map(q => `
-                <div class="q-menu-item" onclick="toggleLayer('${q}')">
-                    <div class="q-dot-icon" style="background:${meta[q]}"></div>
-                    <span style="font-size:13px; font-weight:${activeQueues.has(q)?'bold':'normal'}">Черга ${q}</span>
-                    <span style="margin-left:auto">${activeQueues.has(q)?'👁️':'🙈'}</span>
-                </div>
-            `).join('');
+            const sortedKeys = Object.keys(meta).sort();
+            
+            list.innerHTML = sortedKeys.map(q => {
+                const isActive = activeQueues.has(q);
+                return `
+                    <div class="q-menu-item" onclick="toggleLayer('${q}')">
+                        <div class="q-dot-icon" style="background:${meta[q]}"></div>
+                        <span style="flex:1; font-weight:${isActive?'bold':'normal'}">Черга ${q}</span>
+                        <span style="font-size:16px">${isActive?'👁️':'🙈'}</span>
+                    </div>
+                `;
+            }).join('');
         }
 
         function toggleLayer(q) {
             if (activeQueues.has(q)) activeQueues.delete(q);
             else activeQueues.add(q);
-            updateMapVisibility();
-            loadPoints(); // Оновлюємо іконки в меню
+            refreshMap();
+            // Швидко оновити тільки іконки в меню
+            const menu = document.getElementById('qMenu'); 
+            loadPoints(); 
         }
 
-        function updateMapVisibility() {
+        function refreshMap() {
             Object.keys(layers).forEach(q => {
                 if (activeQueues.has(q)) layers[q].addTo(map);
                 else map.removeLayer(layers[q]);
