@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Sandbox - Improved</title>
+    <title>Svitlo Sandbox - Detector</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -13,6 +13,13 @@
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
         
+        /* Панель дебагу - ТИМЧАСОВА */
+        #debug-box {
+            position: absolute; right: 10px; top: 10px; width: 250px; max-height: 200px;
+            background: rgba(0,0,0,0.8); color: #0f0; font-family: monospace; font-size: 10px;
+            padding: 10px; z-index: 2000; overflow-y: auto; border: 1px solid #0f0;
+        }
+
         .side-btn {
             position: absolute; left: 10px; top: 20px;
             width: 44px; height: 44px; background: white; border-radius: 8px;
@@ -22,21 +29,17 @@
 
         .q-menu {
             position: absolute; left: 65px; top: 20px;
-            width: 240px; background: rgba(255, 255, 255, 0.98); border-radius: 12px; display: none;
+            width: 240px; background: white; border-radius: 12px; display: none;
             flex-direction: column; z-index: 1001; box-shadow: 0 4px 25px rgba(0,0,0,0.4);
-            padding: 12px; border: 1px solid #ddd;
+            padding: 12px;
         }
-        .q-menu-title { font-weight: bold; border-bottom: 2px solid #eee; padding-bottom: 8px; margin-bottom: 10px; font-size: 15px; color: #333; text-align: center; }
-        .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; transition: 0.2s; color: #333; }
-        .q-menu-item:hover { background: #f5f5f5; }
-        .q-dot-icon { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.2); flex-shrink: 0; }
-        
-        .status-tag { display: inline-block; padding: 4px 12px; border-radius: 6px; color: white; font-weight: bold; margin: 8px 0; font-size: 13px; }
-        .popup-info { font-size: 13px; color: #444; line-height: 1.5; }
+        .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; color: #333; }
+        .q-dot-icon { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; border: 1px solid #ccc; }
     </style>
 </head>
 <body>
 
+    <div id="debug-box">Лог завантаження...<br></div>
     <div id="map"></div>
 
     <div class="side-btn" onclick="toggleMenu()">
@@ -44,19 +47,19 @@
     </div>
 
     <div class="q-menu" id="qMenu">
-        <div class="q-menu-title">Черги Славутича</div>
-        <div id="menu-list">Синхронізація...</div>
+        <div id="menu-list"></div>
     </div>
 
     <script>
+        const dbg = (msg) => { document.getElementById('debug-box').innerHTML += msg + "<br>"; };
         const DATA_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs/pub?gid=0&single=true&output=csv";
 
         const map = L.map('map', { zoomControl: true }).setView([51.5229, 30.7598], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         let layers = {}; 
-        let activeQueues = new Set();
         let queueColors = {}; 
+        let activeQueues = new Set();
 
         function toggleMenu() {
             const m = document.getElementById('qMenu');
@@ -65,83 +68,71 @@
 
         async function loadPoints() {
             try {
+                dbg("Запит до таблиці...");
                 const res = await fetch(DATA_URL + "&t=" + Date.now());
                 const csv = await res.text();
                 const rows = csv.split(/\r?\n/);
+                dbg("Отримано рядків: " + rows.length);
 
-                Object.values(layers).forEach(group => map.removeLayer(group));
+                // Очищення мапи
+                Object.values(layers).forEach(g => map.removeLayer(g));
                 layers = {};
 
-                // Пропускаємо лише 1-й рядок (заголовки)
                 for (let i = 1; i < rows.length; i++) {
+                    if (!rows[i]) continue;
+                    
+                    // Більш надійний парсинг CSV
                     const cols = rows[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
-                    if (cols.length < 7 || !cols[3] || !cols[4]) continue;
+                    
+                    if (cols.length < 7) continue;
 
                     const address = cols[1]; 
-                    // Покращений пошук черги: шукаємо шаблон X.X
-                    const qMatch = address.match(/\d\.\d/);
-                    const qKey = qMatch ? qMatch[0] : "Інше";
-                    
                     const lat = parseFloat(cols[3].replace(',', '.'));
                     const lng = parseFloat(cols[4].replace(',', '.'));
-                    const status = cols[5]; 
-                    const baseColor = cols[6] || "#333333"; // Стовпець Color_code
-                    
-                    const isOff = status.toLowerCase().includes("немає");
-                    const displayColor = isOff ? "#808080" : baseColor;
+                    const status = cols[5];
+                    const baseColor = cols[6];
+
+                    // ЕКСПЕРИМЕНТ: Беремо назву черги з першої частини адреси
+                    // Наприклад: "Черга 1.1: вул. Миру" -> "1.1"
+                    let qKey = "Інше";
+                    const parts = address.split(':');
+                    if (parts[0].includes("Черга")) {
+                        qKey = parts[0].replace("Черга", "").trim();
+                    }
+
+                    if (i < 5) dbg(`Рядок ${i}: Адреса: ${address.substring(0,15)} | Черга: ${qKey}`);
 
                     if (!layers[qKey]) {
                         layers[qKey] = L.layerGroup();
-                        if (!activeQueues.has(qKey) && i === 1) activeQueues.add(qKey); // По замовчуванню вмикаємо першу знайдену
+                        queueColors[qKey] = baseColor;
+                        activeQueues.add(qKey);
                     }
-                    
-                    // Якщо це перша ініціалізація, додаємо всі черги в активні
-                    if (queueColors[qKey] === undefined) activeQueues.add(qKey);
-                    queueColors[qKey] = baseColor;
 
-                    const marker = L.circleMarker([lat, lng], {
-                        radius: 8,
-                        fillColor: displayColor,
-                        color: "#fff",
-                        weight: 2,
-                        fillOpacity: 0.9
-                    });
+                    const displayColor = status.toLowerCase().includes("немає") ? "#808080" : baseColor;
 
-                    marker.bindPopup(`
-                        <div style="min-width:180px">
-                            <b style="font-size:15px">${address}</b><br>
-                            <span class="status-tag" style="background:${displayColor}">${status}</span>
-                            <div class="popup-info">
-                                <b>Коментар:</b> ${cols[2] || '—'}<br>
-                                <small style="color:#888; display:block; margin-top:5px;">Дані з таблиці</small>
-                            </div>
-                        </div>
-                    `);
-
-                    marker.addTo(layers[qKey]);
+                    L.circleMarker([lat, lng], {
+                        radius: 7, fillColor: displayColor, color: "#fff", weight: 1, fillOpacity: 0.9
+                    }).bindPopup(`<b>${address}</b><br>${status}`).addTo(layers[qKey]);
                 }
 
                 renderMenu();
                 updateVisibility();
+                dbg("Успішно намальовано!");
             } catch (e) {
-                console.error("Data error:", e);
+                dbg("❌ ПОМИЛКА: " + e.message);
             }
         }
 
         function renderMenu() {
             const list = document.getElementById('menu-list');
-            const sortedKeys = Object.keys(queueColors).sort((a, b) => a.localeCompare(b, undefined, {numeric: true}));
-            
-            list.innerHTML = sortedKeys.map(q => {
-                const isActive = activeQueues.has(q);
-                return `
-                    <div class="q-menu-item" onclick="toggleLayer('${q}')">
-                        <div class="q-dot-icon" style="background:${queueColors[q]}"></div>
-                        <span style="flex:1; font-weight:${isActive?'bold':'normal'}">Черга ${q}</span>
-                        <span style="font-size:18px">${isActive?'👁️':'🙈'}</span>
-                    </div>
-                `;
-            }).join('');
+            const sortedKeys = Object.keys(queueColors).sort((a,b) => a.localeCompare(b, undefined, {numeric: true}));
+            list.innerHTML = sortedKeys.map(q => `
+                <div class="q-menu-item" onclick="toggleLayer('${q}')">
+                    <div class="q-dot-icon" style="background:${queueColors[q]}"></div>
+                    <span style="flex:1">Черга ${q}</span>
+                    <span>${activeQueues.has(q)?'👁️':'🙈'}</span>
+                </div>
+            `).join('');
         }
 
         function toggleLayer(q) {
@@ -159,7 +150,6 @@
         }
 
         loadPoints();
-        setInterval(loadPoints, 30000);
     </script>
 </body>
 </html>
