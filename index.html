@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Sandbox - Final Fix</title>
+    <title>Svitlo Sandbox - Pins & Hardcode</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,40 +12,92 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
-        .side-btn { position: absolute; left: 15px; top: 15px; width: 48px; height: 48px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
-        .q-menu { position: absolute; left: 75px; top: 15px; width: 260px; background: white; border-radius: 16px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 16px; border: 1px solid #ddd; }
+        
+        .side-btn {
+            position: absolute; left: 15px; top: 15px;
+            width: 48px; height: 48px; background: white; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+        }
+
+        .q-menu {
+            position: absolute; left: 75px; top: 15px;
+            width: 250px; background: white; border-radius: 16px; display: none;
+            flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            padding: 16px; border: 1px solid #ddd;
+        }
         .q-menu-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; text-align: center; }
-        .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; }
-        .q-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
+        .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; transition: 0.2s; }
+        .q-menu-item:hover { background: #f0f7ff; }
+        
+        /* Кольорові індикатори в меню */
+        .q-color-box { width: 16px; height: 16px; border-radius: 4px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.1); }
+        
+        /* Стиль балуна */
         .status-tag { display: inline-block; padding: 3px 10px; border-radius: 6px; color: white; font-weight: bold; margin: 8px 0; font-size: 11px; }
+        .popup-box { font-size: 13px; line-height: 1.4; color: #333; min-width: 160px; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
-    <div class="side-btn" onclick="toggleMenu()"><img src="https://img.icons8.com/material-rounded/28/228BE6/layers.png"/></div>
+
+    <div class="side-btn" onclick="toggleMenu()">
+        <img src="https://img.icons8.com/material-rounded/28/228BE6/layers.png"/>
+    </div>
+
     <div class="q-menu" id="qMenu">
         <div class="q-menu-title">Черги Славутича</div>
-        <div id="menu-list"></div>
+        <div id="menu-list">Завантаження...</div>
     </div>
 
     <script>
         const DOC_ID = "2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs";
-        const SHEETS = [
-            { gid: "0", name: "1.1" },
-            { gid: "1407012161", name: "2.1" },
-            { gid: "774761347", name: "3.1" },
-            { gid: "1047238720", name: "3.2" },
-            { gid: "877384835", name: "4.1" },
-            { gid: "1811736051", name: "6.1" }
-        ];
+        
+        // 1. ХАРДКОД КОЛЬОРІВ ТА GID
+        const QUEUE_CONFIG = {
+            "1.1": { gid: "0", color: "#ff0000" }, // Червоний
+            "2.1": { gid: "1407012161", color: "#0000ff" }, // Синій
+            "3.1": { gid: "774761347", color: "#9900ff" }, // Фіолетовий
+            "3.2": { gid: "1047238720", color: "#ffcc00" }, // Жовтий
+            "4.1": { gid: "877384835", color: "#ff9900" }, // Помаранчевий
+            "6.1": { gid: "1811736051", color: "#009933" }  // Зелений
+        };
+
+        // Створюємо масив для ітерації
+        const SHEETS = Object.keys(QUEUE_CONFIG).map(name => ({ name, ...QUEUE_CONFIG[name] }));
 
         const map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         let layers = {}; 
         let activeQueues = new Set(SHEETS.map(s => s.name));
-        let sheetInfo = {};
+        let sheetStats = {}; 
+
+        // 2. ФУНКЦІЯ СТВОРЕННЯ КОЛЬОРОВИХ ПІНІВ
+        function createIcon(colorName) {
+            // URL стандартних кольорових маркерів Leaflet
+            const url = `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${colorName}.png`;
+            return new L.Icon({
+                iconUrl: url,
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+        }
+
+        // Мапінг наших HEX кольорів на назви іконок Leaflet
+        const iconColorMap = {
+            "#ff0000": "red",
+            "#0000ff": "blue",
+            "#9900ff": "violet",
+            "#ffcc00": "gold",
+            "#ff9900": "orange",
+            "#009933": "green",
+            "#808080": "grey" // Для статусу "немає світла"
+        };
 
         function toggleMenu() {
             const m = document.getElementById('qMenu');
@@ -57,56 +109,46 @@
                 const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${s.gid}&t=${Date.now()}`;
                 const res = await fetch(url);
                 const csv = await res.text();
-                const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim()));
+                const rows = csv.split(/\r?\n/).slice(1);
 
                 if (layers[s.name]) map.removeLayer(layers[s.name]);
                 layers[s.name] = L.layerGroup();
                 let pointsCount = 0;
 
-                // Авто-пошук індексів колонок за назвами заголовків
-                const headers = rows[0];
-                const idx = {
-                    lat: headers.findIndex(h => h.toLowerCase().includes('lat')),
-                    lng: headers.findIndex(h => h.toLowerCase().includes('long') || h.toLowerCase().includes('lng')),
-                    addr: headers.findIndex(h => h.toLowerCase().includes('addr')),
-                    status: headers.findIndex(h => h.toLowerCase().includes('status')),
-                    color: headers.findIndex(h => h.toLowerCase().includes('color'))
-                };
+                rows.forEach(row => {
+                    const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
+                    if (cols.length < 11 || !cols[4] || !cols[5]) return;
 
-                // Якщо заголовки не знайдені, використовуємо стандартні індекси
-                const getVal = (row, i, def) => (idx[i] !== -1 ? row[idx[i]] : row[def]);
-
-                for (let i = 1; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (row.length < 5) continue;
-
-                    const rawLat = getVal(row, 'lat', 4);
-                    const rawLng = getVal(row, 'lng', 5);
+                    const address = cols[0];
+                    const lat = parseFloat(cols[4].replace(',', '.'));
+                    const lng = parseFloat(cols[5].replace(',', '.'));
+                    const status = cols[7] || "Є світло";
                     
-                    const lat = parseFloat(rawLat?.replace(',', '.'));
-                    const lng = parseFloat(rawLng?.replace(',', '.'));
+                    const isOff = status.toLowerCase().includes("немає");
+                    
+                    // Визначаємо колір іконки: хардкод або сірий
+                    const hexColor = isOff ? "#808080" : s.color;
+                    const iconName = iconColorMap[hexColor] || "blue";
 
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        const address = getVal(row, 'addr', 0);
-                        const baseColor = getVal(row, 'color', 1) || "#333";
-                        const status = getVal(row, 'status', 7) || "Є світло";
-                        
-                        if (pointsCount === 0) sheetInfo[s.name] = { color: baseColor };
+                    // Створюємо маркер (пін) замість кружечка
+                    L.marker([lat, lng], { icon: createIcon(iconName) })
+                    .bindPopup(`
+                        <div class="popup-box">
+                            <b>${address}</b><br>
+                            <span class="status-tag" style="background:${hexColor}">${status}</span><br>
+                            ${cols[8] ? `<i>${cols[8]}</i><br>` : ''}
+                            <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
+                            <small>Прогноз: ${cols[9] || '—'}</small><br>
+                            <small style="color:#999">Оновлено: ${cols[10] || '—'}</small>
+                        </div>
+                    `).addTo(layers[s.name]);
+                    
+                    pointsCount++;
+                });
 
-                        const isOff = status.toLowerCase().includes("немає");
-                        const pointColor = isOff ? "#808080" : baseColor;
-
-                        L.circleMarker([lat, lng], {
-                            radius: 8, fillColor: pointColor, color: "white", weight: 2, fillOpacity: 0.9
-                        }).bindPopup(`<b>${address}</b><br><span class="status-tag" style="background:${pointColor}">${status}</span>`).addTo(layers[s.name]);
-                        
-                        pointsCount++;
-                    }
-                }
-
-                sheetInfo[s.name].count = pointsCount;
+                sheetStats[s.name] = pointsCount;
                 if (activeQueues.has(s.name)) layers[s.name].addTo(map);
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Error sheet " + s.name, e); }
         }
 
         async function refreshAll() {
@@ -118,17 +160,22 @@
             const list = document.getElementById('menu-list');
             list.innerHTML = SHEETS.map(s => `
                 <div class="q-menu-item" onclick="toggleLayer('${s.name}')">
-                    <div class="q-dot" style="background:${(sheetInfo[s.name] || {}).color || '#ccc'}"></div>
+                    <div class="q-color-box" style="background:${s.color}"></div>
                     <span style="flex:1; font-weight:${activeQueues.has(s.name)?'bold':'normal'}">Черга ${s.name}</span>
-                    <span style="font-size:10px; color:#888">${(sheetInfo[s.name] || {}).count || 0}</span>
-                    <span style="margin-left:8px">${activeQueues.has(s.name)?'👁️':'🙈'}</span>
+                    <span style="font-size:10px; color:#888">${sheetStats[s.name] || 0}</span>
+                    <span style="font-size:18px; margin-left:8px">${activeQueues.has(s.name)?'👁️':'🙈'}</span>
                 </div>
             `).join('');
         }
 
         function toggleLayer(name) {
-            if (activeQueues.has(name)) { activeQueues.delete(name); map.removeLayer(layers[name]); }
-            else { activeQueues.add(name); layers[name].addTo(map); }
+            if (activeQueues.has(name)) {
+                activeQueues.delete(name);
+                if (layers[name]) map.removeLayer(layers[name]);
+            } else {
+                activeQueues.add(name);
+                if (layers[name]) layers[name].addTo(map);
+            }
             renderMenu();
         }
 
