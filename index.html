@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Sandbox - MultiSheet LIVE</title>
+    <title>Svitlo Sandbox - Live Debug</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -22,17 +22,17 @@
 
         .q-menu {
             position: absolute; left: 75px; top: 15px;
-            width: 250px; background: white; border-radius: 16px; display: none;
+            width: 260px; background: white; border-radius: 16px; display: none;
             flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             padding: 16px; border: 1px solid #ddd;
         }
         .q-menu-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; text-align: center; }
-        .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; transition: 0.2s; }
-        .q-menu-item:hover { background: #f0f7ff; }
+        .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; }
         .q-dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0; }
         
-        .status-tag { display: inline-block; padding: 3px 10px; border-radius: 6px; color: white; font-weight: bold; margin: 8px 0; font-size: 11px; }
-        .popup-box { font-size: 13px; line-height: 1.4; color: #333; min-width: 150px; }
+        /* Статуси в меню */
+        .loading-spin { font-size: 10px; color: #999; }
+        .error-tag { color: red; font-size: 10px; }
     </style>
 </head>
 <body>
@@ -44,14 +44,13 @@
     </div>
 
     <div class="q-menu" id="qMenu">
-        <div class="q-menu-title">Черги Славутича</div>
-        <div id="menu-list">Завантаження...</div>
+        <div class="q-menu-title">Перевірка черг...</div>
+        <div id="menu-list"></div>
     </div>
 
     <script>
         const DOC_ID = "2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs";
         
-        // ВАШІ ПЕРЕВІРЕНІ GID
         const SHEETS = [
             { gid: "0", name: "1.1" },
             { gid: "1407012161", name: "2.1" },
@@ -66,7 +65,7 @@
 
         let layers = {}; 
         let activeQueues = new Set(SHEETS.map(s => s.name));
-        let sheetInfo = {}; 
+        let sheetStatus = {}; // Для діагностики
 
         function toggleMenu() {
             const m = document.getElementById('qMenu');
@@ -74,78 +73,96 @@
         }
 
         async function fetchSheet(s) {
+            sheetStatus[s.name] = { state: 'loading', points: 0, color: '#ccc' };
+            renderMenu();
+
             try {
                 const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${s.gid}&t=${Date.now()}`;
                 const res = await fetch(url);
+                if (!res.ok) throw new Error("Помилка мережі");
+                
                 const csv = await res.text();
                 const rows = csv.split(/\r?\n/).slice(1);
 
                 if (layers[s.name]) map.removeLayer(layers[s.name]);
                 layers[s.name] = L.layerGroup();
 
-                rows.forEach(row => {
+                let pointsAdded = 0;
+                rows.forEach((row, index) => {
+                    // Парсимо CSV, враховуючи можливі коми в лапках
                     const cols = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
-                    if (cols.length < 11 || !cols[4] || !cols[5]) return;
-
-                    const address = cols[0];
-                    const baseColor = cols[1];
-                    const lat = parseFloat(cols[4].replace(',', '.'));
-                    const lng = parseFloat(cols[5].replace(',', '.'));
-                    const status = cols[7];
                     
-                    // Запам'ятовуємо колір черги для меню (беремо з першого рядка аркуша)
-                    if (!sheetInfo[s.name]) sheetInfo[s.name] = baseColor;
+                    // Перевірка: чи є координати в стовпцях E та F (індекси 4 та 5)
+                    const lat = parseFloat(cols[4]?.replace(',', '.'));
+                    const lng = parseFloat(cols[5]?.replace(',', '.'));
 
-                    const isOff = status.toLowerCase().includes("немає");
-                    const pointColor = isOff ? "#808080" : baseColor;
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        const address = cols[0] || "Без адреси";
+                        const baseColor = cols[1] || "#333";
+                        const status = cols[7] || "Невідомо";
+                        
+                        if (pointsAdded === 0) sheetStatus[s.name].color = baseColor;
 
-                    L.circleMarker([lat, lng], {
-                        radius: 8, fillColor: pointColor, color: "white", weight: 2, fillOpacity: 0.9
-                    }).bindPopup(`
-                        <div class="popup-box">
-                            <b>${address}</b><br>
-                            <span class="status-tag" style="background:${pointColor}">${status}</span><br>
-                            ${cols[8] ? `<i>${cols[8]}</i><br>` : ''}
-                            <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
-                            <small>Прогноз: ${cols[9] || '—'}</small><br>
-                            <small style="color:#999">Оновлено: ${cols[10] || '—'}</small>
-                        </div>
-                    `).addTo(layers[s.name]);
+                        const isOff = status.toLowerCase().includes("немає");
+                        const pointColor = isOff ? "#808080" : baseColor;
+
+                        L.circleMarker([lat, lng], {
+                            radius: 8, fillColor: pointColor, color: "white", weight: 2, fillOpacity: 0.9
+                        }).bindPopup(`<b>${address}</b><br>Статус: ${status}`).addTo(layers[s.name]);
+                        
+                        pointsAdded++;
+                    }
                 });
 
+                sheetStatus[s.name].state = 'ok';
+                sheetStatus[s.name].points = pointsAdded;
+                
                 if (activeQueues.has(s.name)) layers[s.name].addTo(map);
-            } catch (e) { console.error("Error sheet " + s.name, e); }
+
+            } catch (e) {
+                console.error(`Помилка черги ${s.name}:`, e);
+                sheetStatus[s.name].state = 'error';
+            }
+            renderMenu();
         }
 
         async function refreshAll() {
             await Promise.all(SHEETS.map(s => fetchSheet(s)));
-            renderMenu();
         }
 
         function renderMenu() {
             const list = document.getElementById('menu-list');
-            list.innerHTML = SHEETS.map(s => `
+            list.innerHTML = SHEETS.map(s => {
+                const stat = sheetStatus[s.name] || { state: 'pending' };
+                let info = '';
+                if (stat.state === 'loading') info = '<span class="loading-spin">⌛...</span>';
+                else if (stat.state === 'error') info = '<span class="error-tag">❌ Помилка</span>';
+                else info = `<span style="font-size:10px; color:#666">${stat.points} точок</span>`;
+
+                return `
                 <div class="q-menu-item" onclick="toggleLayer('${s.name}')">
-                    <div class="q-dot" style="background:${sheetInfo[s.name] || '#ccc'}"></div>
+                    <div class="q-dot" style="background:${stat.color}"></div>
                     <span style="flex:1; font-weight:${activeQueues.has(s.name)?'bold':'normal'}">Черга ${s.name}</span>
-                    <span style="font-size:18px">${activeQueues.has(s.name)?'👁️':'🙈'}</span>
+                    ${info}
+                    <span style="margin-left:5px">${activeQueues.has(s.name)?'👁️':'🙈'}</span>
                 </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function toggleLayer(name) {
             if (activeQueues.has(name)) {
                 activeQueues.delete(name);
-                map.removeLayer(layers[name]);
+                if (layers[name]) map.removeLayer(layers[name]);
             } else {
                 activeQueues.add(name);
-                layers[name].addTo(map);
+                if (layers[name]) layers[name].addTo(map);
             }
             renderMenu();
         }
 
         refreshAll();
-        setInterval(refreshAll, 60000); // Оновлення раз на хвилину
+        setInterval(refreshAll, 60000);
     </script>
 </body>
 </html>
