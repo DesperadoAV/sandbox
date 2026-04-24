@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Slavutych - Live Map</title>
+    <title>Svitlo Slavutych - Fixed System</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -15,14 +15,15 @@
         .side-btn { position: absolute; left: 15px; top: 15px; width: 48px; height: 48px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
         .q-menu { position: absolute; left: 75px; top: 15px; width: 260px; background: white; border-radius: 16px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 16px; border: 1px solid #ddd; }
         .q-menu-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; text-align: center; }
-        .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; }
+        .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; transition: 0.2s; }
+        .q-menu-item:hover { background: #f8f9fa; }
         .q-color-box { width: 18px; height: 18px; border-radius: 5px; }
 
         .popup-box { font-size: 14px; line-height: 1.6; min-width: 220px; color: #333; padding: 5px; }
         .p-addr { font-size: 16px; font-weight: bold; display: block; margin-bottom: 5px; color: #000; border-bottom: 2px solid #f0f0f0; padding-bottom: 4px; }
-        .status-tag { display: inline-block; padding: 4px 12px; border-radius: 8px; color: white; font-weight: bold; margin: 8px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .status-tag { display: inline-block; padding: 4px 12px; border-radius: 8px; color: white; font-weight: bold; margin: 8px 0; font-size: 12px; text-transform: uppercase; }
         .info-row { margin: 4px 0; display: flex; flex-direction: column; }
-        .label { color: #888; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: -2px; }
+        .label { color: #888; font-size: 10px; font-weight: bold; text-transform: uppercase; }
         .val { font-weight: 500; color: #222; }
         .divider { height: 1px; background: #eee; margin: 8px 0; }
     </style>
@@ -40,25 +41,24 @@
         const DOC_ID = "2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs";
         
         const QUEUE_CONFIG = {
-            "1.1": { gid: "0", color: "#ff0000", icon: "red" },
-            "2.1": { gid: "1407012161", color: "#0000ff", icon: "blue" },
-            "3.1": { gid: "774761347", color: "#9900ff", icon: "violet" },
-            "3.2": { gid: "1047238720", color: "#ffcc00", icon: "gold" },
-            "4.1": { gid: "877384835", color: "#ff9900", icon: "orange" },
-            "6.1": { gid: "1811736051", color: "#009933", icon: "green" }
+            "1.1": { gid: "0", color: "#e6194b", icon: "red" },
+            "2.1": { gid: "1407012161", color: "#4363d8", icon: "blue" },
+            "3.1": { gid: "774761347", color: "#911eb4", icon: "violet" },
+            "3.2": { gid: "ffe119", color: "#ffe119", icon: "gold" },
+            "4.1": { gid: "f58231", color: "#f58231", icon: "orange" },
+            "6.1": { gid: "3cb44b", color: "#3cb44b", icon: "green" }
         };
 
-        const SHEETS = Object.keys(QUEUE_CONFIG).map(name => ({ name, ...QUEUE_CONFIG[name] }));
         const map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         let layers = {}; 
-        let activeQueues = new Set(SHEETS.map(s => s.name));
+        let activeQueues = new Set(Object.keys(QUEUE_CONFIG));
         let sheetStats = {}; 
 
-        function getIcon(color) {
+        function getIcon(colorName) {
             return new L.Icon({
-                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
+                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${colorName}.png`,
                 shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
                 iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
             });
@@ -69,111 +69,94 @@
             m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
         }
 
-        async function fetchSheet(s) {
+        async function fetchSheet(qName) {
+            const conf = QUEUE_CONFIG[qName];
             try {
-                const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${s.gid}&t=${Date.now()}`;
+                const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${conf.gid}&t=${Date.now()}`;
                 const res = await fetch(url);
                 const csv = await res.text();
-                const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim()));
                 
-                if (layers[s.name]) map.removeLayer(layers[s.name]);
-                layers[s.name] = L.layerGroup();
-                let pointsCount = 0;
+                // Надійний парсинг рядків
+                const rows = csv.split(/\r?\n/).map(row => {
+                    return row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim());
+                });
+                
+                // Видаляємо старий шар цієї черги перед створенням нового
+                if (layers[qName]) map.removeLayer(layers[qName]);
+                layers[qName] = L.layerGroup();
 
-                // Використовуємо індекси згідно вашої структури
-                const idx = {
-                    addr: 1,    // Стовпчик B
-                    desc: 2,    // Стовпчик C
-                    lat: 3,     // Стовпчик D
-                    lng: 4,     // Стовпчик E
-                    trigger: 5, // Стовпчик F (y/no)
-                    status: 7,  // Стовпчик H
-                    time: 8,    // Стовпчик I
-                    expect: 9,  // Стовпчик J
-                    expectT: 10 // Стовпчик K
-                };
+                let count = 0;
 
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i];
-                    if (row.length < 6) continue;
+                    if (row.length < 10) continue;
 
-                    const lat = parseFloat(row[idx.lat]?.replace(',', '.'));
-                    const lng = parseFloat(row[idx.lng]?.replace(',', '.'));
+                    // Жорстка прив'язка до ваших стовпчиків
+                    const addr = row[1];   // B
+                    const desc = row[2];   // C
+                    const lat = parseFloat(row[3]?.replace(',', '.')); // D
+                    const lng = parseFloat(row[4]?.replace(',', '.')); // E
+                    const trigger = row[5]?.toLowerCase(); // F (y/no)
+                    const statusText = row[7]; // H
+                    const timeChange = row[8]; // I
+                    const plan = `${row[9] || ''} ${row[10] || ''}`.trim(); // J + K
 
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        const fValue = row[idx.trigger]?.toLowerCase() || 'y';
-                        // ТЕПЕР: якщо 'no' — світла немає, якщо 'y' — світло є
-                        const hasLight = (fValue === 'y');
-                        
-                        const currentIcon = hasLight ? s.icon : "grey";
-                        const badgeColor = hasLight ? s.color : "#808080";
+                        // ГОЛОВНА УМОВА: y = кольоровий, все інше = сірий
+                        const isOnline = (trigger === 'y');
+                        const markerColor = isOnline ? conf.icon : "grey";
+                        const tagBg = isOnline ? conf.color : "#808080";
 
-                        // Беремо текст статусу з стовпчика H
-                        const statusText = row[idx.status] || (hasLight ? 'Світло з\'явилося' : 'Світло зникло');
-                        const timeChange = row[idx.time] || '';
-                        const expectation = `${row[idx.expect] || ''} ${row[idx.expectT] || ''}`.trim();
-                        const description = row[idx.desc] || '';
-
-                        L.marker([lat, lng], { icon: getIcon(currentIcon) })
+                        L.marker([lat, lng], { icon: getIcon(markerColor) })
                         .bindPopup(`
                             <div class="popup-box">
-                                <span class="p-addr">${row[idx.addr] || 'Адреса'}</span>
-                                <span class="status-tag" style="background:${badgeColor}">${statusText}</span>
-                                
-                                <div class="info-row">
-                                    <span class="label">Змінено о:</span>
-                                    <span class="val">${timeChange || '—'}</span>
-                                </div>
-                                
-                                ${expectation ? `
-                                <div class="info-row">
-                                    <span class="label">Графік:</span>
-                                    <span class="val">${expectation}</span>
-                                </div>` : ''}
-
-                                ${description ? `
+                                <span class="p-addr">${addr || 'Адреса'}</span>
+                                <span class="status-tag" style="background:${tagBg}">${statusText || (isOnline ? 'Є світло' : 'Немає світла')}</span>
+                                <div class="info-row"><span class="label">Змінено о:</span><span class="val">${timeChange || '—'}</span></div>
+                                ${plan ? `<div class="info-row"><span class="label">Очікується:</span><span class="val">${plan}</span></div>` : ''}
+                                ${desc ? `<div class="divider"></div><div class="info-row"><span class="label">Деталі:</span><span class="val">${desc}</span></div>` : ''}
                                 <div class="divider"></div>
-                                <div class="info-row">
-                                    <span class="label">Опис:</span>
-                                    <span class="val">${description}</span>
-                                </div>` : ''}
-                                
-                                <div class="divider"></div>
-                                <div style="font-size:10px; color:#aaa; text-align:right;">Черга ${s.name}</div>
+                                <div style="font-size:9px; color:#ccc; text-align:right">Черга ${qName}</div>
                             </div>
-                        `).addTo(layers[s.name]);
-                        pointsCount++;
+                        `).addTo(layers[qName]);
+                        count++;
                     }
                 }
-                sheetStats[s.name] = pointsCount;
-                if (activeQueues.has(s.name)) layers[s.name].addTo(map);
-            } catch (e) { console.error(e); }
+                sheetStats[qName] = count;
+                if (activeQueues.has(qName)) layers[qName].addTo(map);
+            } catch (e) { console.error(`Помилка черги ${qName}:`, e); }
         }
 
         async function refreshAll() {
-            await Promise.all(SHEETS.map(s => fetchSheet(s)));
+            const loaders = Object.keys(QUEUE_CONFIG).map(name => fetchSheet(name));
+            await Promise.all(loaders);
             renderMenu();
         }
 
         function renderMenu() {
             const list = document.getElementById('menu-list');
-            list.innerHTML = SHEETS.map(s => `
-                <div class="q-menu-item" onclick="toggleLayer('${s.name}')">
-                    <div class="q-color-box" style="background:${s.color}"></div>
-                    <span style="flex:1; font-weight:${activeQueues.has(s.name)?'bold':'normal'}">Черга ${s.name}</span>
-                    <span style="font-size:11px; color:#888">${sheetStats[s.name] || 0}</span>
+            list.innerHTML = Object.keys(QUEUE_CONFIG).map(name => `
+                <div class="q-menu-item" onclick="toggleLayer('${name}')" style="opacity:${activeQueues.has(name)?1:0.5}">
+                    <div class="q-color-box" style="background:${QUEUE_CONFIG[name].color}"></div>
+                    <span style="flex:1">Черга ${name}</span>
+                    <span style="font-size:11px; color:#888">${sheetStats[name] || 0}</span>
                 </div>
             `).join('');
         }
 
         function toggleLayer(name) {
-            if (activeQueues.has(name)) { activeQueues.delete(name); map.removeLayer(layers[name]); }
-            else { activeQueues.add(name); layers[name].addTo(map); }
+            if (activeQueues.has(name)) {
+                activeQueues.delete(name);
+                if (layers[name]) map.removeLayer(layers[name]);
+            } else {
+                activeQueues.add(name);
+                if (layers[name]) layers[name].addTo(map);
+            }
             renderMenu();
         }
 
         refreshAll();
-        setInterval(refreshAll, 60000);
+        setInterval(refreshAll, 45000); // Оновлення кожні 45 секунд
     </script>
 </body>
 </html>
