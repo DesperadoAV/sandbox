@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Slavutych - Fixed</title>
+    <title>Svitlo Slavutych - Connected</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -37,23 +37,32 @@
         .zoom-ctrl { position: absolute; right: 15px; bottom: 30px; z-index: 1001; display: flex; flex-direction: column; gap: 8px; }
         .z-btn { width: 44px; height: 44px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
 
-        /* Меню черг */
+        /* Меню черг (Акордеон) */
         .q-menu { position: absolute; left: 75px; top: 15px; width: 280px; max-height: 85vh; background: white; border-radius: 16px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
         .banner-active .q-menu { top: 65px; }
         .q-menu-title { font-weight: bold; font-size: 16px; padding: 16px; border-bottom: 1px solid #eee; text-align: center; }
         #menu-list { overflow-y: auto; flex: 1; }
-        .q-header { display: flex; align-items: center; padding: 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
-        .q-color-box { width: 15px; height: 15px; border-radius: 4px; margin-right: 12px; }
-        .q-count { font-size: 11px; color: #999; margin-left: auto; }
+        .q-item-container { border-bottom: 1px solid #f0f0f0; }
+        .q-header { display: flex; align-items: center; padding: 12px; cursor: pointer; }
+        .q-color-box { width: 12px; height: 12px; border-radius: 3px; margin-right: 10px; }
+        .address-list { display: none; background: #f9f9f9; max-height: 200px; overflow-y: auto; }
+        .address-item { padding: 9px 15px 9px 42px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; color: #555; }
 
         /* Модалки */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2100; display: none; align-items: center; justify-content: center; padding: 20px; }
-        .modal-content { background: white; border-radius: 20px; padding: 25px; width: 100%; max-width: 350px; position: relative; }
-        .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; color: #aaa; }
+        .modal-content { background: white; border-radius: 24px; padding: 25px; width: 100%; max-width: 360px; position: relative; }
+        .close-modal { position: absolute; top: 18px; right: 20px; font-size: 28px; cursor: pointer; color: #ccc; }
         
-        /* Прогноз стилі */
+        .modal-screen { display: none; flex-direction: column; gap: 12px; }
+        .modal-screen.active { display: flex; }
+
+        .btn-link { display: flex; align-items: center; padding: 14px; border-radius: 14px; text-decoration: none; color: #333; font-weight: 600; background: #f7f8fa; border: 1px solid #eee; transition: 0.2s; }
+        .grid-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .grid-item { padding: 12px; text-align: center; background: #f7f8fa; border-radius: 12px; text-decoration: none; color: #333; font-weight: bold; border: 1px solid #eee; font-size: 14px; }
+        .back-btn { margin-bottom: 15px; color: #228BE6; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 6px; font-size: 14px; }
+
         .forecast-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
-        .f-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; }
+        .f-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; }
     </style>
 </head>
 <body>
@@ -62,7 +71,7 @@
     <div id="map"></div>
 
     <div class="ui-btn side-btn" onclick="toggleMenu()"><img src="https://img.icons8.com/material-rounded/24/228BE6/layers.png"/></div>
-    <div class="ui-btn info-btn" onclick="toggleModal('infoModal')">і</div>
+    <div class="ui-btn info-btn" onclick="openInfo()">і</div>
     <div class="ui-btn graph-btn" onclick="toggleModal('graphModal')"><img src="https://img.icons8.com/material-rounded/24/228BE6/calendar.png"/></div>
     <div class="ui-btn forecast-btn" onclick="toggleModal('forecastModal')">🔮</div>
 
@@ -76,26 +85,40 @@
         <div id="menu-list"></div>
     </div>
 
-    <div class="modal" id="forecastModal" onclick="this.style.display='none'">
+    <div class="modal" id="infoModal" onclick="toggleModal('infoModal')">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="close-modal" onclick="document.getElementById('forecastModal').style.display='none'">&times;</span>
+            <span class="close-modal" onclick="toggleModal('infoModal')">&times;</span>
+            
+            <div id="screen-main" class="modal-screen active">
+                <h3 style="margin-top:0; color:#228BE6;">Svitlo Slavutych</h3>
+                <p style="font-size: 14px; color: #555;">Оберіть месенджер для сповіщень:</p>
+                <div class="btn-link" onclick="showScreen('tg')"><img src="https://img.icons8.com/color/28/telegram-app.png" style="margin-right:10px"> Telegram</div>
+                <div class="btn-link" onclick="showScreen('vb')"><img src="https://img.icons8.com/color/28/viber.png" style="margin-right:10px"> Viber</div>
+            </div>
+
+            <div id="screen-tg" class="modal-screen">
+                <div class="back-btn" onclick="showScreen('main')">← Назад</div>
+                <div class="grid-links" id="tg-grid"></div>
+            </div>
+
+            <div id="screen-vb" class="modal-screen">
+                <div class="back-btn" onclick="showScreen('main')">← Назад</div>
+                <div class="grid-links" id="vb-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal" id="forecastModal" onclick="toggleModal('forecastModal')">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-modal" onclick="toggleModal('forecastModal')">&times;</span>
             <h3 style="margin-top:0">Майбутні події</h3>
-            <div id="forecast-list">Завантаження...</div>
+            <div id="forecast-list"></div>
         </div>
     </div>
 
-    <div class="modal" id="infoModal" onclick="this.style.display='none'">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="close-modal" onclick="document.getElementById('infoModal').style.display='none'">&times;</span>
-            <h3>Про мапу</h3>
-            <p>Дана мапа відображає актуальний стан електропостачання в м. Славутич.</p>
-            <p style="font-size: 13px; color: #666;">Дані оновлюються автоматично згідно з графіками.</p>
-        </div>
-    </div>
-
-    <div class="modal" id="graphModal" onclick="this.style.display='none'">
+    <div class="modal" id="graphModal" onclick="toggleModal('graphModal')">
         <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
-            <span class="close-modal" onclick="document.getElementById('graphModal').style.display='none'">&times;</span>
+            <span class="close-modal" onclick="toggleModal('graphModal')">&times;</span>
             <img src="https://raw.githubusercontent.com/amvasylets/Svitlo_in_Slavutych/refs/heads/main/charts/summary_today.png" style="width:100%; border-radius:10px;">
         </div>
     </div>
@@ -103,6 +126,11 @@
     <script>
         const DOC_ID = "2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs";
         const MAP_DATA_GID = "1910800617";
+        
+        const LINKS = {
+            tg: {"1.1":"https://t.me/svitlo_in_Slavutych_1_1","2.1":"https://t.me/svitlo_in_Slavutych_2_1","3.1":"https://t.me/svitlo_in_Slavutych_3_1","3.2":"https://t.me/svitlo_in_Slavutych_3_2","4.1":"https://t.me/svitlo_in_Slavutych_4_1","6.1":"https://t.me/svitlo_in_Slavutych_6_1"},
+            vb: {"1.1":"https://invite.viber.com/?g2=AQAwYtpyJWoodlZaVSylf8qXJh%2BIkorI%2BUEIlSNEjLY97kwXcxRXWcee8Wt%2FJM%2FS","2.1":"https://invite.viber.com/?g2=AQBXEog0eJuMg1ZaVvzFZ14R%2Bq%2B3qDs5gmfU3pLXpwkPygNpg43EBTllJkScCQI6","3.1":"https://invite.viber.com/?g2=AQA8UIh2a1ur71ZaVlCe5j56cKWAwAem1kuhxYeCg9xsUb8AFCKgRE5duiSA3fvW","3.2":"https://invite.viber.com/?g2=AQA9Od9EXDrYslZaNY2rHJ1v1t8S5lA9RGxcLlvDP4ujK3n%2BHMvVHzeWmldseJdN","4.1":"https://invite.viber.com/?g2=AQAr4i0FDuS0TlZaWDF6W2Hk%2BTDJrVrCLKTBQSvAwDb7JPuDYn0HE0WtouQyqIm7","6.1":"https://invite.viber.com/?g2=AQBP%2BePVKBjDBFZaVeCnWMT9gn%2Fl2vl2636E%2B9vRvecZjNegiPbNxN93KG90spyY"}
+        };
 
         const QUEUE_CONFIG = {
             "1.1": { gid: "0", icon: "red", color: "#ff0000" },
@@ -116,16 +144,10 @@
         const map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        let layers = {}; 
-        let activeQueues = new Set(Object.keys(QUEUE_CONFIG));
-        let counts = {};
+        let layers = {}, activeQueues = new Set(Object.keys(QUEUE_CONFIG)), sheetData = {}, markersStore = {};
 
         function getIcon(color) {
-            return new L.Icon({
-                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-            });
+            return new L.Icon({ iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`, shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] });
         }
 
         async function updateMapSettings() {
@@ -134,35 +156,18 @@
                 const res = await fetch(url);
                 const csv = await res.text();
                 const rows = csv.split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
-
-                // Банер
                 const msg = rows[9] ? rows[9][2]?.replace(/"/g, '') : "";
                 const banner = document.getElementById('emergency-banner');
                 if (msg && msg.trim().length > 1) {
                     document.getElementById('emergency-text').innerText = "⚠️ " + msg;
-                    banner.style.display = "block";
-                    document.body.classList.add('banner-active');
+                    banner.style.display = "block"; document.body.classList.add('banner-active');
                 } else {
-                    banner.style.display = "none";
-                    document.body.classList.remove('banner-active');
+                    banner.style.display = "none"; document.body.classList.remove('banner-active');
                 }
-
-                // Вікно прогнозів
                 let fHtml = "";
                 for (let i = 1; i <= 6; i++) {
                     if (rows[i]) {
-                        const qName = rows[i][0];
-                        const qColor = rows[i][1] || "#333";
-                        const qEvent = rows[i][2] || "—";
-                        const qTime = rows[i][3] || "";
-                        fHtml += `
-                        <div class="forecast-row">
-                            <div style="display:flex; align-items:center;">
-                                <div class="f-dot" style="background:${qColor}"></div>
-                                <b>Черга ${qName}</b>
-                            </div>
-                            <div style="font-size:13px">${qEvent} <b style="color:#228BE6">${qTime}</b></div>
-                        </div>`;
+                        fHtml += `<div class="forecast-row"><div><span class="f-dot" style="background:${rows[i][1]}"></span><b>Черга ${rows[i][0]}</b></div><div style="font-size:13px">${rows[i][2]} <b style="color:#228BE6">${rows[i][3]}</b></div></div>`;
                     }
                 }
                 document.getElementById('forecast-list').innerHTML = fHtml;
@@ -175,70 +180,66 @@
                 const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${conf.gid}&t=${Date.now()}`;
                 const res = await fetch(url);
                 const csv = await res.text();
-                const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
-                
+                const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim()));
                 if (layers[qName]) map.removeLayer(layers[qName]);
                 layers[qName] = L.layerGroup();
-                let count = 0;
-
+                sheetData[qName] = []; markersStore[qName] = {};
                 for (let i = 2; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (!row[3]) continue;
-                    const lat = parseFloat(row[3].replace(',', '.'));
-                    const lng = parseFloat(row[4].replace(',', '.'));
-                    const hasLight = (row[5]?.replace(/"/g, '').toLowerCase() === 'y');
-                    
-                    L.marker([lat, lng], { icon: getIcon(hasLight ? conf.icon : "grey") })
-                    .bindPopup(`<b>${row[1]}</b><br>${hasLight ? 'Світло є' : 'Немає світла'}`)
-                    .addTo(layers[qName]);
-                    count++;
+                    const row = rows[i]; if (!row[3]) continue;
+                    const lat = parseFloat(row[3].replace(',', '.')), lng = parseFloat(row[4].replace(',', '.'));
+                    const hasLight = (row[5]?.toLowerCase() === 'y');
+                    const marker = L.marker([lat, lng], { icon: getIcon(hasLight ? conf.icon : "grey") }).bindPopup(`<b>${row[1]}</b><br>${hasLight ? 'Є' : 'Немає'}`);
+                    marker.addTo(layers[qName]); markersStore[qName][row[1]] = marker; sheetData[qName].push(row[1]);
                 }
-                counts[qName] = count;
                 if (activeQueues.has(qName)) layers[qName].addTo(map);
             } catch (e) { console.error(e); }
         }
 
         function renderMenu() {
-            const list = document.getElementById('menu-list');
-            list.innerHTML = Object.keys(QUEUE_CONFIG).map(name => `
-                <div class="q-header" onclick="toggleVisibility('${name}')">
-                    <div class="q-eye">
-                        <img src="https://img.icons8.com/material-rounded/20/${activeQueues.has(name)?'228BE6':'999999'}/visible.png"/>
+            document.getElementById('menu-list').innerHTML = Object.keys(QUEUE_CONFIG).map(name => `
+                <div class="q-item-container">
+                    <div class="q-header" onclick="toggleAccordion('${name}')">
+                        <div class="q-eye" onclick="event.stopPropagation(); toggleVisibility('${name}')">
+                            <img src="https://img.icons8.com/material-rounded/20/${activeQueues.has(name)?'228BE6':'999999'}/visible.png"/>
+                        </div>
+                        <div class="q-color-box" style="background:${QUEUE_CONFIG[name].color}"></div>
+                        <span style="flex:1; font-size:14px">Черга ${name}</span>
+                        <span style="font-size:11px; color:#999">${(sheetData[name]||[]).length}</span>
                     </div>
-                    <div class="q-color-box" style="background:${QUEUE_CONFIG[name].color}"></div>
-                    <span style="font-size:14px">Черга ${name}</span>
-                    <span class="q-count">${counts[name] || 0}</span>
+                    <div class="address-list" id="list-${name}">
+                        ${(sheetData[name]||[]).map(addr => `<div class="address-item" onclick="focusAddress('${name}', '${addr}')">${addr}</div>`).join('')}
+                    </div>
                 </div>`).join('');
         }
 
         function toggleVisibility(name) {
-            if (activeQueues.has(name)) {
-                activeQueues.delete(name);
-                map.removeLayer(layers[name]);
-            } else {
-                activeQueues.add(name);
-                layers[name].addTo(map);
-            }
+            if (activeQueues.has(name)) { activeQueues.delete(name); map.removeLayer(layers[name]); }
+            else { activeQueues.add(name); layers[name].addTo(map); }
             renderMenu();
         }
 
-        async function refreshAll() {
-            await updateMapSettings();
-            for (const name of Object.keys(QUEUE_CONFIG)) {
-                await fetchQueue(name);
-            }
-            renderMenu();
+        function toggleAccordion(name) {
+            const target = document.getElementById(`list-${name}`);
+            const isVisible = target.style.display === 'block';
+            document.querySelectorAll('.address-list').forEach(l => l.style.display = 'none');
+            target.style.display = isVisible ? 'none' : 'block';
         }
 
-        function toggleModal(id) {
-            const m = document.getElementById(id);
-            if (m) m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
+        function focusAddress(q, a) { const m = markersStore[q][a]; if(m) { map.setView(m.getLatLng(), 18); m.openPopup(); } }
+
+        function openInfo() {
+            showScreen('main');
+            const qs = Object.keys(QUEUE_CONFIG);
+            document.getElementById('tg-grid').innerHTML = qs.map(q => `<a href="${LINKS.tg[q]}" target="_blank" class="grid-item">Черга ${q}</a>`).join('');
+            document.getElementById('vb-grid').innerHTML = qs.map(q => `<a href="${LINKS.vb[q]}" target="_blank" class="grid-item">Черга ${q}</a>`).join('');
+            toggleModal('infoModal');
         }
 
-        function toggleMenu() {
-            const m = document.getElementById('qMenu');
-            m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
-        }
+        function showScreen(id) { document.querySelectorAll('.modal-screen').forEach(s => s.classList.remove('active')); document.getElementById('screen-' + id).classList.add('active'); }
+        function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; }
+        function toggleMenu() { const m = document.getElementById('qMenu'); m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; }
+
+        async function refreshAll() { await updateMapSettings(); for (const name of Object.keys(QUEUE_CONFIG)) await fetchQueue(name); renderMenu(); }
 
         refreshAll();
         setInterval(refreshAll, 60000);
