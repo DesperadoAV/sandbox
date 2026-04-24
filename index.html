@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Slavutych - Live Control</title>
+    <title>Svitlo Slavutych - Pro</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -13,78 +13,101 @@
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
 
-        /* Екстрений банер - тепер яскравіший та помітніший */
+        /* Банер */
         #emergency-banner {
-            display: none;
-            position: absolute;
-            top: 0; width: 100%;
-            background: #d94141;
-            color: white;
-            z-index: 2005;
-            padding: 12px 15px;
-            font-weight: bold;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-            font-size: 14px;
-            box-sizing: border-box;
+            display: none; position: absolute; top: 0; width: 100%;
+            background: #d94141; color: white; z-index: 2005;
+            padding: 12px 15px; font-weight: bold; text-align: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4); font-size: 14px; box-sizing: border-box;
         }
 
-        /* Кнопки інтерфейсу */
+        /* Кнопки */
         .ui-btn { position: absolute; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; }
         .side-btn { left: 15px; top: 15px; width: 48px; height: 48px; }
         .info-btn { left: 15px; top: 75px; width: 48px; height: 48px; color: #228BE6; font-size: 20px; font-weight: bold; }
         .graph-btn { left: 15px; top: 135px; width: 48px; height: 48px; }
         .forecast-btn { left: 15px; top: 195px; width: 48px; height: 48px; font-size: 22px; }
 
-        /* Зміщення кнопок вниз, якщо є банер */
         .banner-active .side-btn { top: 65px; }
         .banner-active .info-btn { top: 125px; }
         .banner-active .graph-btn { top: 185px; }
         .banner-active .forecast-btn { top: 245px; }
 
+        /* Zoom */
+        .zoom-ctrl { position: absolute; right: 15px; bottom: 30px; z-index: 1001; display: flex; flex-direction: column; gap: 8px; }
+        .z-btn { width: 44px; height: 44px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+
+        /* Меню черг */
+        .q-menu { position: absolute; left: 75px; top: 15px; width: 280px; max-height: 85vh; background: white; border-radius: 16px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
+        .banner-active .q-menu { top: 65px; }
+        .q-menu-title { font-weight: bold; font-size: 16px; padding: 16px; border-bottom: 1px solid #eee; text-align: center; }
+        #menu-list { overflow-y: auto; flex: 1; }
+        .q-item-container { border-bottom: 1px solid #f0f0f0; }
+        .q-header { display: flex; align-items: center; padding: 12px; cursor: pointer; }
+        .q-color-box { width: 12px; height: 12px; border-radius: 3px; margin-right: 10px; }
+        .address-list { display: none; background: #f9f9f9; max-height: 200px; overflow-y: auto; }
+        .address-item { padding: 9px 15px 9px 42px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; color: #555; }
+
         /* Модалки */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2100; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-content { background: white; border-radius: 20px; padding: 25px; width: 100%; max-width: 350px; position: relative; }
-        .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; color: #aaa; }
-
         .forecast-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
         .f-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; }
     </style>
 </head>
-<body>
+<body class="">
 
     <div id="emergency-banner"><span id="emergency-text"></span></div>
     <div id="map"></div>
 
     <div class="ui-btn side-btn" onclick="toggleMenu()"><img src="https://img.icons8.com/material-rounded/24/228BE6/layers.png"/></div>
-    <div class="ui-btn info-btn" onclick="openInfo()">і</div>
+    <div class="ui-btn info-btn" onclick="toggleModal('infoModal')">і</div>
     <div class="ui-btn graph-btn" onclick="toggleModal('graphModal')"><img src="https://img.icons8.com/material-rounded/24/228BE6/calendar.png"/></div>
     <div class="ui-btn forecast-btn" onclick="toggleModal('forecastModal')">🔮</div>
 
+    <div class="zoom-ctrl">
+        <div class="z-btn" onclick="map.zoomIn()">+</div>
+        <div class="z-btn" onclick="map.zoomOut()">−</div>
+    </div>
+
+    <div class="q-menu" id="qMenu">
+        <div class="q-menu-title">Черги Славутича</div>
+        <div id="menu-list"></div>
+    </div>
+
     <div class="modal" id="forecastModal" onclick="this.style.display='none'">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="close-modal" onclick="document.getElementById('forecastModal').style.display='none'">&times;</span>
             <h3 style="margin-top:0">Майбутні події</h3>
-            <div id="forecast-list">Оновлення даних...</div>
-            <p style="font-size:11px; color:#999; margin-top:15px; text-align:center;">Інформація згідно аркуша MapData</p>
+            <div id="forecast-list">Завантаження...</div>
+        </div>
+    </div>
+
+    <div class="modal" id="graphModal" onclick="this.style.display='none'">
+        <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
+            <img src="https://raw.githubusercontent.com/amvasylets/Svitlo_in_Slavutych/refs/heads/main/charts/summary_today.png" style="width:100%; border-radius:10px;">
         </div>
     </div>
 
     <script>
         const DOC_ID = "2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs";
-        const MAP_DATA_GID = "1910800617"; // Оновлений GID
+        const MAP_DATA_GID = "1910800617";
 
         const QUEUE_CONFIG = {
-            "1.1": { gid: "0", icon: "red" },
-            "2.1": { gid: "1407012161", icon: "blue" },
-            "3.1": { gid: "774761347", icon: "violet" },
-            "3.2": { gid: "1047238720", icon: "gold" },
-            "4.1": { gid: "877384835", icon: "orange" },
-            "6.1": { gid: "1811736051", icon: "green" }
+            "1.1": { gid: "0", icon: "red", color: "#ff0000" },
+            "2.1": { gid: "1407012161", icon: "blue", color: "#0000ff" },
+            "3.1": { gid: "774761347", icon: "violet", color: "#9900ff" },
+            "3.2": { gid: "1047238720", icon: "gold", color: "#ffcc00" },
+            "4.1": { gid: "877384835", icon: "orange", color: "#ff9900" },
+            "6.1": { gid: "1811736051", icon: "green", color: "#009933" }
         };
 
         const map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        let layers = {}; 
+        let activeQueues = new Set(Object.keys(QUEUE_CONFIG));
+        let sheetData = {};
+        let markersStore = {};
 
         function getIcon(color) {
             return new L.Icon({
@@ -94,16 +117,14 @@
             });
         }
 
-        // --- ФУНКЦІЯ ПІДКЛЮЧЕННЯ ДО MAPDATA ---
-        async function updateFromMapData() {
+        // --- MAP DATA ТА БАНЕР ---
+        async function updateMapSettings() {
             try {
                 const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${MAP_DATA_GID}&t=${Date.now()}`;
                 const res = await fetch(url);
                 const csv = await res.text();
-                // Складний спліт для обробки ком всередині лапок (для тексту повідомлення)
-                const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
+                const rows = csv.split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
 
-                // 1. Екстрене повідомлення (Рядок 10, стовпчик C -> index [9][2])
                 const msg = rows[9] ? rows[9][2]?.replace(/"/g, '') : "";
                 const banner = document.getElementById('emergency-banner');
                 if (msg && msg.trim().length > 1) {
@@ -115,44 +136,106 @@
                     document.body.classList.remove('banner-active');
                 }
 
-                // 2. Прогноз (Рядки 2-7)
                 let fHtml = "";
                 for (let i = 1; i <= 6; i++) {
                     if (rows[i]) {
-                        const name = rows[i][0];
-                        const color = rows[i][1] || "#333";
-                        const event = rows[i][2] || "—";
-                        const time = rows[i][3] || "";
-                        fHtml += `
-                        <div class="forecast-row">
-                            <div style="display:flex; align-items:center;">
-                                <div class="f-dot" style="background:${color}"></div>
-                                <b>Черга ${name}</b>
-                            </div>
-                            <div style="font-size:13px">${event} <b style="color:#228BE6">${time}</b></div>
+                        fHtml += `<div class="forecast-row">
+                            <div><span class="f-dot" style="background:${rows[i][1]}"></span><b>${rows[i][0]}</b></div>
+                            <div style="font-size:13px">${rows[i][2]} <b style="color:#228BE6">${rows[i][3]}</b></div>
                         </div>`;
                     }
                 }
                 document.getElementById('forecast-list').innerHTML = fHtml;
-
-            } catch (e) { console.error("MapData Sync Error", e); }
+            } catch (e) { console.error(e); }
         }
 
-        // --- РЕШТА ФУНКЦІЙ МАПИ ---
+        // --- ЗАВАНТАЖЕННЯ МАРКЕРІВ ---
+        async function fetchQueue(qName) {
+            const conf = QUEUE_CONFIG[qName];
+            try {
+                const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${conf.gid}&t=${Date.now()}`;
+                const res = await fetch(url);
+                const csv = await res.text();
+                const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim()));
+                
+                if (layers[qName]) map.removeLayer(layers[qName]);
+                layers[qName] = L.layerGroup();
+                sheetData[qName] = [];
+                markersStore[qName] = {};
+
+                for (let i = 2; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (!row[3]) continue;
+                    const lat = parseFloat(row[3].replace(',', '.'));
+                    const lng = parseFloat(row[4].replace(',', '.'));
+                    const hasLight = (row[5]?.toLowerCase() === 'y');
+
+                    const marker = L.marker([lat, lng], { icon: getIcon(hasLight ? conf.icon : "grey") })
+                    .bindPopup(`<b>${row[1]}</b><br>${hasLight ? 'Світло є' : 'Немає'}`);
+                    
+                    marker.addTo(layers[qName]);
+                    markersStore[qName][row[1]] = marker;
+                    sheetData[qName].push(row[1]);
+                }
+                if (activeQueues.has(qName)) layers[qName].addTo(map);
+            } catch (e) { console.error(e); }
+        }
+
+        async function refreshAll() {
+            await updateMapSettings();
+            for (const name of Object.keys(QUEUE_CONFIG)) {
+                await fetchQueue(name);
+            }
+            renderMenu();
+        }
+
+        function renderMenu() {
+            const list = document.getElementById('menu-list');
+            list.innerHTML = Object.keys(QUEUE_CONFIG).map(name => `
+                <div class="q-item-container">
+                    <div class="q-header" onclick="toggleAccordion('${name}')">
+                        <div class="q-eye" onclick="event.stopPropagation(); toggleVisibility('${name}')">
+                            <img src="https://img.icons8.com/material-rounded/20/${activeQueues.has(name)?'228BE6':'999999'}/visible.png"/>
+                        </div>
+                        <div class="q-color-box" style="background:${QUEUE_CONFIG[name].color}"></div>
+                        <span style="flex:1; font-size:14px">Черга ${name}</span>
+                    </div>
+                    <div class="address-list" id="list-${name}">
+                        ${(sheetData[name]||[]).map(addr => `<div class="address-item" onclick="focusAddress('${name}', '${addr}')">${addr}</div>`).join('')}
+                    </div>
+                </div>`).join('');
+        }
+
+        function toggleVisibility(name) {
+            if (activeQueues.has(name)) { activeQueues.delete(name); map.removeLayer(layers[name]); }
+            else { activeQueues.add(name); layers[name].addTo(map); }
+            renderMenu();
+        }
+
+        function toggleAccordion(name) {
+            const target = document.getElementById(`list-${name}`);
+            const isVisible = target.style.display === 'block';
+            document.querySelectorAll('.address-list').forEach(l => l.style.display = 'none');
+            target.style.display = isVisible ? 'none' : 'block';
+        }
+
+        function focusAddress(q, a) {
+            const m = markersStore[q][a];
+            if(m) { map.setView(m.getLatLng(), 18); m.openPopup(); }
+        }
+
         function toggleModal(id) {
             const m = document.getElementById(id);
             m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
         }
 
-        // Ініціалізація
-        updateFromMapData();
-        setInterval(updateFromMapData, 30000); // Оновлюємо прогноз та банер кожні 30 сек.
+        function toggleMenu() {
+            const m = document.getElementById('qMenu');
+            m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
+        }
 
-        // Завантаження черг (ваша існуюча логіка)
-        Object.keys(QUEUE_CONFIG).forEach(q => {
-            // Тут ваш код fetchQueue...
-        });
-
+        refreshAll();
+        setInterval(refreshAll, 60000);
     </script>
 </body>
 </html>
