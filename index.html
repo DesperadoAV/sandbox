@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Slavutych Smart Map</title>
+    <title>Svitlo Slavutych - System F</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,37 +12,19 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
-        
-        .side-btn {
-            position: absolute; left: 15px; top: 15px;
-            width: 48px; height: 48px; background: white; border-radius: 12px;
-            display: flex; align-items: center; justify-content: center;
-            cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.4);
-        }
-
-        .q-menu {
-            position: absolute; left: 75px; top: 15px;
-            width: 260px; background: white; border-radius: 16px; display: none;
-            flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            padding: 16px; border: 1px solid #ddd;
-        }
+        .side-btn { position: absolute; left: 15px; top: 15px; width: 48px; height: 48px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
+        .q-menu { position: absolute; left: 75px; top: 15px; width: 260px; background: white; border-radius: 16px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 16px; border: 1px solid #ddd; }
         .q-menu-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; text-align: center; }
         .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; }
         .q-color-box { width: 18px; height: 18px; border-radius: 5px; }
-        
-        /* Стиль балуна */
-        .popup-box { font-size: 13px; line-height: 1.5; min-width: 200px; color: #333; }
-        .p-addr { font-size: 15px; font-weight: bold; display: block; border-bottom: 1px solid #eee; margin-bottom: 5px; padding-bottom: 3px; }
-        .status-tag { display: inline-block; padding: 3px 10px; border-radius: 6px; color: white; font-weight: bold; margin: 5px 0; font-size: 11px; text-transform: uppercase; }
-        .info-line { margin: 2px 0; display: block; }
-        .label { color: #888; font-weight: normal; }
+        .popup-box { font-size: 13px; line-height: 1.5; min-width: 210px; color: #333; }
+        .status-tag { display: inline-block; padding: 3px 10px; border-radius: 6px; color: white; font-weight: bold; margin: 5px 0; font-size: 11px; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
     <div class="side-btn" onclick="toggleMenu()"><img src="https://img.icons8.com/material-rounded/28/228BE6/layers.png"/></div>
-
     <div class="q-menu" id="qMenu">
         <div class="q-menu-title">Черги Славутича</div>
         <div id="menu-list"></div>
@@ -51,7 +33,6 @@
     <script>
         const DOC_ID = "2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs";
         
-        // Можете змінювати іконку на: red, blue, green, orange, yellow, violet, grey, black
         const QUEUE_CONFIG = {
             "1.1": { gid: "0", color: "#ff0000", icon: "red" },
             "2.1": { gid: "1407012161", color: "#0000ff", icon: "blue" },
@@ -95,26 +76,29 @@
 
                 const headers = rows[0].map(h => h.toLowerCase());
                 
-                // ШУКАЄМО КОЛОНКИ (C, H, I, J, K тощо)
+                // ШУКАЄМО КОЛОНКИ (F тепер критично важливий)
                 const idx = {
                     addr: headers.indexOf('address'),
-                    desc: headers.indexOf('description'), // Колонка C
+                    desc: headers.indexOf('description'),
                     lat: headers.indexOf('latitude'),
                     lng: headers.indexOf('longitude'),
-                    status: headers.indexOf('status'),    // Колонка H
-                    comm: headers.indexOf('comment'),    // Колонка I
-                    fore: headers.indexOf('forecast'),   // Колонка J
-                    upd: headers.indexOf('updated')      // Колонка K
+                    trigger: 5, // Стовпчик F (0,1,2,3,4,5)
+                    status: headers.indexOf('status'),
+                    fore: headers.indexOf('forecast'),
+                    upd: headers.indexOf('updated')
                 };
 
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i];
+                    if (row.length < 6) continue;
+
                     const lat = parseFloat(row[idx.lat]?.replace(',', '.'));
                     const lng = parseFloat(row[idx.lng]?.replace(',', '.'));
 
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        const status = row[idx.status] || "Є світло";
-                        const isOff = status.toLowerCase().includes("немає");
+                        // ЛОГІКА СТОВПЧИКА F: y = є світло, no = немає
+                        const fValue = row[idx.trigger]?.toLowerCase() || 'y';
+                        const isOff = (fValue === 'no');
                         
                         const currentIcon = isOff ? "grey" : s.icon;
                         const badgeColor = isOff ? "#808080" : s.color;
@@ -122,21 +106,17 @@
                         L.marker([lat, lng], { icon: getIcon(currentIcon) })
                         .bindPopup(`
                             <div class="popup-box">
-                                <span class="p-addr">${row[idx.addr] || 'Адреса'}</span>
-                                <span class="status-tag" style="background:${badgeColor}">${status}</span>
-                                <div class="info-line"><span class="label">Опис:</span> ${row[idx.desc] || '—'}</div>
-                                <div class="info-line"><span class="label">Коментар:</span> ${row[idx.comm] || '—'}</div>
-                                <hr style="border:0; border-top:1px solid #eee; margin:8px 0;">
-                                <div class="info-line"><span class="label">Прогноз:</span> ${row[idx.fore] || '—'}</div>
-                                <div class="info-line" style="font-size:10px; color:#999; margin-top:5px;">
-                                    Оновлено: ${row[idx.upd] || 'щойно'}
-                                </div>
+                                <b>${row[idx.addr] || 'Адреса'}</b><br>
+                                <span class="status-tag" style="background:${badgeColor}">${row[idx.status] || (isOff ? 'Немає світла' : 'Світло є')}</span><br>
+                                <small><b>Опис:</b> ${row[idx.desc] || '—'}</small><br>
+                                <small><b>Прогноз:</b> ${row[idx.fore] || '—'}</small><br>
+                                <hr style="border:0; border-top:1px solid #eee; margin:5px 0;">
+                                <small style="color:#999">Оновлено: ${row[idx.upd] || 'щойно'}</small>
                             </div>
                         `).addTo(layers[s.name]);
                         pointsCount++;
                     }
                 }
-
                 sheetStats[s.name] = pointsCount;
                 if (activeQueues.has(s.name)) layers[s.name].addTo(map);
             } catch (e) { console.error(e); }
