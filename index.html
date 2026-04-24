@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Slavutych - Stable</title>
+    <title>Svitlo Slavutych - Updated UI</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -18,11 +18,13 @@
         .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; }
         .q-color-box { width: 18px; height: 18px; border-radius: 5px; }
 
-        .popup-box { font-size: 14px; line-height: 1.6; min-width: 220px; color: #333; padding: 5px; }
-        .p-addr { font-size: 16px; font-weight: bold; display: block; border-bottom: 2px solid #f0f0f0; padding-bottom: 4px; }
-        .status-tag { display: inline-block; padding: 4px 12px; border-radius: 8px; color: white; font-weight: bold; margin: 8px 0; font-size: 12px; text-transform: uppercase; }
-        .label { color: #888; font-size: 10px; font-weight: bold; }
-        .val { font-weight: 500; color: #222; }
+        /* Стилі вікна */
+        .popup-box { font-size: 14px; line-height: 1.5; min-width: 220px; color: #333; }
+        .p-addr { font-size: 16px; font-weight: bold; display: block; color: #000; }
+        .p-desc { font-size: 13px; color: #666; margin-top: 2px; font-style: italic; display: block; }
+        .status-tag { display: inline-block; padding: 4px 12px; border-radius: 8px; color: white; font-weight: bold; margin: 10px 0 5px 0; font-size: 12px; text-transform: uppercase; }
+        .p-time { font-size: 13px; font-weight: 500; color: #222; margin-bottom: 4px; }
+        .p-plan { font-size: 12px; color: #555; background: #f0f0f0; padding: 4px 8px; border-radius: 5px; margin-top: 5px; }
         .divider { height: 1px; background: #eee; margin: 8px 0; }
     </style>
 </head>
@@ -67,7 +69,6 @@
             m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
         }
 
-        // Функція для штучної затримки
         const sleep = ms => new Promise(res => setTimeout(res, ms));
 
         async function fetchSheet(qName) {
@@ -76,7 +77,6 @@
                 const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${conf.gid}&t=${Date.now()}`;
                 const res = await fetch(url);
                 const csv = await res.text();
-                
                 const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim()));
                 
                 if (layers[qName]) map.removeLayer(layers[qName]);
@@ -92,20 +92,31 @@
 
                     if (!isNaN(lat) && !isNaN(lng)) {
                         const trigger = row[5]?.toLowerCase(); 
-                        // Світло є, ТІЛЬКИ якщо чітко написано 'y'. Якщо пуста клітинка або 'no' - сірий.
                         const hasLight = (trigger === 'y');
                         
                         const markerColor = hasLight ? conf.icon : "grey";
                         const tagBg = hasLight ? conf.color : "#808080";
+                        
+                        // Формування тексту статусу
+                        const statusText = hasLight ? "Світло є" : "Світла немає";
+                        const timeText = row[8] ? `З ${row[8]}` : "";
+                        const plan = `${row[9]||''} ${row[10]||''}`.trim();
+                        const description = row[2] || "";
 
                         L.marker([lat, lng], { icon: getIcon(markerColor) })
                         .bindPopup(`
                             <div class="popup-box">
                                 <span class="p-addr">${row[1]}</span>
-                                <span class="status-tag" style="background:${tagBg}">${row[7] || (hasLight ? 'Є світло' : 'Немає')}</span>
-                                <div style="font-size:12px; margin-top:5px;"><b>Змінено:</b> ${row[8] || '—'}</div>
-                                <div style="font-size:12px;"><b>План:</b> ${row[9]||''} ${row[10]||''}</div>
-                                ${row[2] ? `<div class="divider"></div><div style="font-size:12px;">${row[2]}</div>` : ''}
+                                ${description ? `<span class="p-desc">${description}</span>` : ''}
+                                
+                                <span class="status-tag" style="background:${tagBg}">${statusText}</span>
+                                
+                                ${timeText ? `<div class="p-time">${timeText}</div>` : ''}
+                                
+                                ${plan ? `<div class="p-plan"><b>План:</b> ${plan}</div>` : ''}
+                                
+                                <div class="divider"></div>
+                                <div style="font-size:9px; color:#ccc; text-align:right">Черга ${qName}</div>
                             </div>
                         `).addTo(layers[qName]);
                         count++;
@@ -117,7 +128,6 @@
         }
 
         async function refreshAll() {
-            // Завантажуємо черги ПОСЛІДОВНО з затримкою 300мс
             const names = Object.keys(QUEUE_CONFIG);
             for (const name of names) {
                 await fetchSheet(name);
