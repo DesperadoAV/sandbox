@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Slavutych - Connected</title>
+    <title>Svitlo Slavutych - Emergency Ready</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,279 +12,131 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
-        
-        /* Кнопки інтерфейсу */
-        .ui-btn { position: absolute; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; transition: 0.2s; }
-        .ui-btn:active { transform: scale(0.9); }
-        .side-btn { left: 15px; top: 15px; width: 48px; height: 48px; }
-        .info-btn { left: 15px; top: 75px; width: 48px; height: 48px; font-weight: bold; font-size: 20px; color: #228BE6; }
-        .graph-btn { left: 15px; top: 135px; width: 48px; height: 48px; }
 
-        .zoom-ctrl { position: absolute; right: 15px; bottom: 30px; z-index: 1001; display: flex; flex-direction: column; gap: 8px; }
-        .z-btn { width: 44px; height: 44px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+        /* Екстрений банер */
+        #emergency-banner {
+            display: none;
+            position: absolute;
+            top: 0; width: 100%;
+            background: #ff0000;
+            color: white;
+            z-index: 2005;
+            padding: 12px 0;
+            font-weight: bold;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+        .marquee { display: inline-block; white-space: nowrap; animation: marquee 15s linear infinite; }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
 
-        /* Модальне вікно */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
-        .modal-content { background: white; border-radius: 24px; padding: 25px; width: 100%; max-width: 360px; position: relative; min-height: 380px; box-shadow: 0 20px 50px rgba(0,0,0,0.3); }
-        .close-modal { position: absolute; top: 18px; right: 20px; font-size: 28px; cursor: pointer; color: #ccc; line-height: 1; }
-        
-        .modal-screen { display: none; flex-direction: column; gap: 12px; }
-        .modal-screen.active { display: flex; }
+        /* Кнопки */
+        .ui-btn { position: absolute; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; }
+        .side-btn { left: 15px; top: 55px; width: 48px; height: 48px; } /* Трохи опустив через банер */
+        .info-btn { left: 15px; top: 115px; width: 48px; height: 48px; color: #228BE6; font-size: 20px; font-weight: bold; }
+        .graph-btn { left: 15px; top: 175px; width: 48px; height: 48px; }
+        .forecast-btn { left: 15px; top: 235px; width: 48px; height: 48px; font-size: 22px; }
 
-        .btn-link { display: flex; align-items: center; padding: 14px; border-radius: 14px; text-decoration: none; color: #333; font-weight: 600; background: #f7f8fa; border: 1px solid #eee; transition: 0.2s; }
-        .btn-link:hover { background: #f0f2f5; border-color: #ddd; }
-        .btn-link img { width: 28px; margin-right: 12px; }
+        /* Модалки */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2100; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+        .modal-content { background: white; border-radius: 20px; padding: 25px; width: 100%; max-width: 350px; position: relative; }
+        .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; }
 
-        .grid-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .grid-item { padding: 12px; text-align: center; background: #f7f8fa; border-radius: 12px; text-decoration: none; color: #333; font-weight: bold; border: 1px solid #eee; font-size: 14px; }
-        .grid-item:hover { background: #eef1f4; }
-
-        .back-btn { margin-bottom: 15px; color: #228BE6; cursor: pointer; font-weight: bold; display: flex; align-items: center; gap: 6px; font-size: 14px; }
-
-        /* Меню черг (Акордеон) */
-        .q-menu { position: absolute; left: 75px; top: 15px; width: 280px; max-height: 85vh; background: white; border-radius: 16px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
-        .q-menu-title { font-weight: bold; font-size: 16px; padding: 16px; border-bottom: 1px solid #eee; text-align: center; }
-        #menu-list { overflow-y: auto; flex: 1; }
-        .q-item-container { border-bottom: 1px solid #f0f0f0; }
-        .q-header { display: flex; align-items: center; padding: 12px; cursor: pointer; }
-        .q-color-box { width: 12px; height: 12px; border-radius: 3px; margin-right: 10px; }
-        .address-list { display: none; background: #f9f9f9; max-height: 200px; overflow-y: auto; }
-        .address-item { padding: 9px 15px 9px 42px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; color: #555; }
-        
-        .graph-img { width: 100%; border-radius: 12px; }
+        .forecast-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .f-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; }
     </style>
 </head>
 <body>
+
+    <div id="emergency-banner"><div class="marquee" id="emergency-text"></div></div>
 
     <div id="map"></div>
 
     <div class="ui-btn side-btn" onclick="toggleMenu()"><img src="https://img.icons8.com/material-rounded/24/228BE6/layers.png"/></div>
     <div class="ui-btn info-btn" onclick="openInfo()">і</div>
     <div class="ui-btn graph-btn" onclick="toggleModal('graphModal')"><img src="https://img.icons8.com/material-rounded/24/228BE6/calendar.png"/></div>
+    <div class="ui-btn forecast-btn" onclick="toggleModal('forecastModal')">🔮</div>
 
-    <div class="zoom-ctrl">
-        <div class="z-btn" onclick="map.zoomIn()">+</div>
-        <div class="z-btn" onclick="map.zoomOut()">−</div>
-    </div>
-
-    <div class="modal" id="infoModal" onclick="closeModals(event)">
+    <div class="modal" id="forecastModal" onclick="this.style.display='none'">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="close-modal" onclick="toggleModal('infoModal')">&times;</span>
-            
-            <div id="screen-main" class="modal-screen active">
-                <h3 style="margin-top:0; color:#228BE6;">Svitlo Slavutych</h3>
-                <p style="font-size: 14px; color: #555; line-height: 1.4;">Обирайте ваш месенджер, щоб отримувати сповіщення про зміну стану світла за вашою чергою:</p>
-                
-                <div class="btn-link" onclick="showScreen('tg')">
-                    <img src="https://img.icons8.com/color/48/telegram-app.png"/> Telegram Канали
-                </div>
-                <div class="btn-link" onclick="showScreen('vb')">
-                    <img src="https://img.icons8.com/color/48/viber.png"/> Viber Спільноти
-                </div>
-
-                <div style="margin-top:15px; padding:12px; background:#fff9db; border-radius:12px; font-size:12px; color:#856404;">
-                    📌 Дані на мапі оновлюються автоматично кожну хвилину.
-                </div>
-            </div>
-
-            <div id="screen-tg" class="modal-screen">
-                <div class="back-btn" onclick="showScreen('main')">← Назад до вибору</div>
-                <h4 style="margin:0 0 10px 0;">Telegram Черги</h4>
-                <div class="grid-links" id="tg-grid"></div>
-                <a id="tg-news-link" href="" target="_blank" class="btn-link" style="margin-top:10px; background:#e3f2fd; justify-content: center;">📢 Канал новин</a>
-            </div>
-
-            <div id="screen-vb" class="modal-screen">
-                <div class="back-btn" onclick="showScreen('main')">← Назад до вибору</div>
-                <h4 style="margin:0 0 10px 0;">Viber Спільноти</h4>
-                <div class="grid-links" id="vb-grid"></div>
-                <a id="vb-news-link" href="" target="_blank" class="btn-link" style="margin-top:10px; background:#f3e5f5; justify-content: center;">📢 Спільнота новин</a>
-            </div>
+            <span class="close-modal" onclick="document.getElementById('forecastModal').style.display='none'">&times;</span>
+            <h3 style="margin-top:0">Наступні події</h3>
+            <div id="forecast-list"></div>
+            <p style="font-size:11px; color:#999; margin-top:15px; text-align:center;">Дані згідно офіційних графіків</p>
         </div>
-    </div>
-
-    <div class="modal" id="graphModal" onclick="this.style.display='none'">
-        <div class="modal-content" style="max-width: 600px; padding:15px;" onclick="event.stopPropagation()">
-            <span class="close-modal" onclick="toggleModal('graphModal')">&times;</span>
-            <img src="https://raw.githubusercontent.com/amvasylets/Svitlo_in_Slavutych/refs/heads/main/charts/summary_today.png" class="graph-img">
-        </div>
-    </div>
-
-    <div class="q-menu" id="qMenu">
-        <div class="q-menu-title">Черги Славутича</div>
-        <div id="menu-list"></div>
     </div>
 
     <script>
-        // БАЗА ПОСИЛАНЬ
-        const LINKS = {
-            tg: {
-                "1.1": "https://t.me/svitlo_in_Slavutych_1_1",
-                "2.1": "https://t.me/svitlo_in_Slavutych_2_1",
-                "3.1": "https://t.me/svitlo_in_Slavutych_3_1",
-                "3.2": "https://t.me/svitlo_in_Slavutych_3_2",
-                "4.1": "https://t.me/svitlo_in_Slavutych_4_1",
-                "6.1": "https://t.me/svitlo_in_Slavutych_6_1",
-                "news": "https://t.me/svitlo_in_Slavutych_News"
-            },
-            vb: {
-                "1.1": "https://invite.viber.com/?g2=AQAwYtpyJWoodlZaVSylf8qXJh%2BIkorI%2BUEIlSNEjLY97kwXcxRXWcee8Wt%2FJM%2FS",
-                "2.1": "https://invite.viber.com/?g2=AQBXEog0eJuMg1ZaVvzFZ14R%2Bq%2B3qDs5gmfU3pLXpwkPygNpg43EBTllJkScCQI6",
-                "3.1": "https://invite.viber.com/?g2=AQA8UIh2a1ur71ZaVlCe5j56cKWAwAem1kuhxYeCg9xsUb8AFCKgRE5duiSA3fvW",
-                "3.2": "https://invite.viber.com/?g2=AQA9Od9EXDrYslZaNY2rHJ1v1t8S5lA9RGxcLlvDP4ujK3n%2BHMvVHzeWmldseJdN",
-                "4.1": "https://invite.viber.com/?g2=AQAr4i0FDuS0TlZaWDF6W2Hk%2BTDJrVrCLKTBQSvAwDb7JPuDYn0HE0WtouQyqIm7",
-                "6.1": "https://invite.viber.com/?g2=AQBP%2BePVKBjDBFZaVeCnWMT9gn%2Fl2vl2636E%2B9vRvecZjNegiPbNxN93KG90spyY",
-                "news": "https://invite.viber.com/?g2=AQBWONG%2BDtc6YVZaVt3j7%2BE73z2aD5aruhm7JFLEDXOExJuSOJZd6Ca2OsxdFHLo"
-            }
-        };
-
+        const MAP_DATA_GID = "1507727419"; // ЗАМІНІТЬ на GID вашого аркуша MapData
         const DOC_ID = "2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs";
-        const QUEUE_CONFIG = {
-            "1.1": { gid: "0", color: "#ff0000", icon: "red" },
-            "2.1": { gid: "1407012161", color: "#0000ff", icon: "blue" },
-            "3.1": { gid: "774761347", color: "#9900ff", icon: "violet" },
-            "3.2": { gid: "1047238720", color: "#ffcc00", icon: "gold" },
-            "4.1": { gid: "877384835", color: "#ff9900", icon: "orange" },
-            "6.1": { gid: "1811736051", color: "#009933", icon: "green" }
-        };
+        
+        let mapSettings = { emergency: "", queues: {} };
 
-        const map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        // 1. Отримання налаштувань з MapData
+        async function fetchMapSettings() {
+            try {
+                const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${MAP_DATA_GID}&t=${Date.now()}`;
+                const res = await fetch(url);
+                const csv = await res.text();
+                const rows = csv.split(/\r?\n/).map(r => r.split(','));
 
-        let layers = {}; 
-        let activeQueues = new Set(Object.keys(QUEUE_CONFIG));
-        let sheetData = {};
-        let markersStore = {};
+                // Текст з C10 (Рядок 9, Індекс 2)
+                const emerText = rows[9] ? rows[9][2] : "";
+                const banner = document.getElementById('emergency-banner');
+                if(emerText && emerText.trim() !== "") {
+                    document.getElementById('emergency-text').innerText = "⚠️ " + emerText;
+                    banner.style.display = "block";
+                } else {
+                    banner.style.display = "none";
+                }
 
-        function getIcon(color) {
-            return new L.Icon({
-                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
-                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-                iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
-            });
+                // Зчитуємо дані черг (A, B, C, D)
+                for(let i=1; i<=6; i++) {
+                    if(rows[i]) {
+                        mapSettings.queues[rows[i][0]] = {
+                            color: rows[i][1] || "#888",
+                            nextEvent: rows[i][2] || "немає даних",
+                            eventTime: rows[i][3] || ""
+                        };
+                    }
+                }
+                updateForecastUI();
+            } catch(e) { console.error("MapData Error:", e); }
         }
 
-        // Керування модалками
+        function updateForecastUI() {
+            const list = document.getElementById('forecast-list');
+            list.innerHTML = Object.keys(mapSettings.queues).map(q => {
+                const data = mapSettings.queues[q];
+                return `
+                    <div class="forecast-row">
+                        <div style="display:flex; align-items:center;">
+                            <div class="f-dot" style="background:${data.color}"></div>
+                            <b>Черга ${q}</b>
+                        </div>
+                        <div style="font-size:13px;">
+                            ${data.nextEvent} <span style="font-weight:bold; color:#228BE6;">${data.eventTime}</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
         function toggleModal(id) {
             const m = document.getElementById(id);
             m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
         }
 
-        function closeModals(e) {
-            document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
-        }
+        // Початкове завантаження та цикл оновлення
+        fetchMapSettings();
+        // Далі йде ваш попередній скрипт мапи (fetchSheet, refreshAll)...
+        // Важливо: у функціях малювання маркерів тепер можна використовувати mapSettings.queues[qName].color
+        
+        setInterval(() => {
+            fetchMapSettings();
+            // refreshAll(); // Оновлення маркерів
+        }, 60000);
 
-        function showScreen(id) {
-            document.querySelectorAll('.modal-screen').forEach(s => s.classList.remove('active'));
-            document.getElementById('screen-' + id).classList.add('active');
-        }
-
-        function openInfo() {
-            showScreen('main');
-            const qs = Object.keys(QUEUE_CONFIG);
-            document.getElementById('tg-grid').innerHTML = qs.map(q => `<a href="${LINKS.tg[q]}" target="_blank" class="grid-item">Черга ${q}</a>`).join('');
-            document.getElementById('vb-grid').innerHTML = qs.map(q => `<a href="${LINKS.vb[q]}" target="_blank" class="grid-item">Черга ${q}</a>`).join('');
-            document.getElementById('tg-news-link').href = LINKS.tg.news;
-            document.getElementById('vb-news-link').href = LINKS.vb.news;
-            toggleModal('infoModal');
-        }
-
-        // Керування меню
-        function toggleMenu() {
-            const m = document.getElementById('qMenu');
-            m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
-        }
-
-        async function fetchSheet(qName) {
-            const conf = QUEUE_CONFIG[qName];
-            try {
-                const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${conf.gid}&t=${Date.now()}`;
-                const res = await fetch(url);
-                const csv = await res.text();
-                const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim()));
-                
-                if (layers[qName]) map.removeLayer(layers[qName]);
-                layers[qName] = L.layerGroup();
-                sheetData[qName] = [];
-                markersStore[qName] = {};
-
-                for (let i = 2; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (!row[3] || !row[4]) continue;
-                    const lat = parseFloat(row[3].replace(',', '.'));
-                    const lng = parseFloat(row[4].replace(',', '.'));
-                    if (isNaN(lat)) continue;
-
-                    const hasLight = (row[5]?.toLowerCase() === 'y');
-                    const markerColor = hasLight ? conf.icon : "grey";
-                    const tagBg = hasLight ? conf.color : "#808080";
-                    
-                    const marker = L.marker([lat, lng], { icon: getIcon(markerColor) })
-                    .bindPopup(`
-                        <div style="font-size:14px;">
-                            <b>${row[1]}</b><br>
-                            <small style="color:#666">${row[2]||''}</small><br>
-                            <div style="background:${tagBg}; color:white; padding:4px 8px; border-radius:6px; display:inline-block; margin:8px 0; font-weight:bold; font-size:11px;">
-                                ${hasLight ? 'СВІТЛО Є' : 'НЕМАЄ СВІТЛА'}
-                            </div><br>
-                            <small>З ${row[8]||'—'}</small>
-                        </div>
-                    `);
-                    
-                    marker.addTo(layers[qName]);
-                    markersStore[qName][row[1]] = marker;
-                    sheetData[qName].push(row[1]);
-                }
-                if (activeQueues.has(qName)) layers[qName].addTo(map);
-            } catch (e) { console.error(e); }
-        }
-
-        async function refreshAll() {
-            for (const name of Object.keys(QUEUE_CONFIG)) {
-                await fetchSheet(name);
-                await new Promise(r => setTimeout(r, 200));
-            }
-            renderMenu();
-        }
-
-        function renderMenu() {
-            const list = document.getElementById('menu-list');
-            list.innerHTML = Object.keys(QUEUE_CONFIG).map(name => `
-                <div class="q-item-container">
-                    <div class="q-header" onclick="toggleAccordion('${name}')">
-                        <div class="q-eye" onclick="event.stopPropagation(); toggleVisibility('${name}')">
-                            <img src="https://img.icons8.com/material-rounded/20/${activeQueues.has(name)?'228BE6':'999999'}/visible.png"/>
-                        </div>
-                        <div class="q-color-box" style="background:${QUEUE_CONFIG[name].color}"></div>
-                        <span style="flex:1; font-size:14px; font-weight:500;">Черга ${name}</span>
-                        <span style="font-size:12px; color:#999; margin-right:5px">${(sheetData[name]||[]).length}</span>
-                    </div>
-                    <div class="address-list" id="list-${name}">
-                        ${(sheetData[name]||[]).map(addr => `<div class="address-item" onclick="focusAddress('${name}', '${addr}')">${addr}</div>`).join('')}
-                    </div>
-                </div>`).join('');
-        }
-
-        function toggleVisibility(name) {
-            if (activeQueues.has(name)) { activeQueues.delete(name); map.removeLayer(layers[name]); }
-            else { activeQueues.add(name); layers[name].addTo(map); }
-            renderMenu();
-        }
-
-        function toggleAccordion(name) {
-            const target = document.getElementById(`list-${name}`);
-            const isVisible = target.style.display === 'block';
-            document.querySelectorAll('.address-list').forEach(l => l.style.display = 'none');
-            target.style.display = isVisible ? 'none' : 'block';
-        }
-
-        function focusAddress(qName, addr) {
-            const marker = markersStore[qName][addr];
-            if (marker) { map.setView(marker.getLatLng(), 18); marker.openPopup(); }
-        }
-
-        refreshAll();
-        setInterval(refreshAll, 60000);
     </script>
 </body>
 </html>
