@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Slavutych - System F</title>
+    <title>Svitlo Slavutych - Info Pro</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -17,8 +17,15 @@
         .q-menu-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; text-align: center; }
         .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; }
         .q-color-box { width: 18px; height: 18px; border-radius: 5px; }
-        .popup-box { font-size: 13px; line-height: 1.5; min-width: 210px; color: #333; }
-        .status-tag { display: inline-block; padding: 3px 10px; border-radius: 6px; color: white; font-weight: bold; margin: 5px 0; font-size: 11px; }
+
+        /* Оновлений стиль вікна інформації */
+        .popup-box { font-size: 14px; line-height: 1.6; min-width: 220px; color: #333; padding: 5px; }
+        .p-addr { font-size: 16px; font-weight: bold; display: block; margin-bottom: 5px; color: #000; border-bottom: 2px solid #f0f0f0; padding-bottom: 4px; }
+        .status-tag { display: inline-block; padding: 4px 12px; border-radius: 8px; color: white; font-weight: bold; margin: 8px 0; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .info-row { margin: 4px 0; display: flex; flex-direction: column; }
+        .label { color: #888; font-size: 11px; font-weight: bold; text-transform: uppercase; margin-bottom: -2px; }
+        .val { font-weight: 500; color: #222; }
+        .divider { height: 1px; background: #eee; margin: 8px 0; }
     </style>
 </head>
 <body>
@@ -74,18 +81,18 @@
                 layers[s.name] = L.layerGroup();
                 let pointsCount = 0;
 
+                // Індекси згідно опису: C=2, F=5, H=7, I=8, J=9, K=10, Lat=4, Lng=5 (але краще автопошук)
                 const headers = rows[0].map(h => h.toLowerCase());
-                
-                // ШУКАЄМО КОЛОНКИ (F тепер критично важливий)
                 const idx = {
                     addr: headers.indexOf('address'),
-                    desc: headers.indexOf('description'),
+                    desc: 2,  // Стовпчик C
                     lat: headers.indexOf('latitude'),
                     lng: headers.indexOf('longitude'),
-                    trigger: 5, // Стовпчик F (0,1,2,3,4,5)
-                    status: headers.indexOf('status'),
-                    fore: headers.indexOf('forecast'),
-                    upd: headers.indexOf('updated')
+                    trigger: 5, // Стовпчик F
+                    status: 7,  // Стовпчик H
+                    time: 8,    // Стовпчик I
+                    expect: 9,  // Стовпчик J
+                    expectT: 10 // Стовпчик K
                 };
 
                 for (let i = 1; i < rows.length; i++) {
@@ -96,22 +103,43 @@
                     const lng = parseFloat(row[idx.lng]?.replace(',', '.'));
 
                     if (!isNaN(lat) && !isNaN(lng)) {
-                        // ЛОГІКА СТОВПЧИКА F: y = є світло, no = немає
                         const fValue = row[idx.trigger]?.toLowerCase() || 'y';
                         const isOff = (fValue === 'no');
                         
                         const currentIcon = isOff ? "grey" : s.icon;
                         const badgeColor = isOff ? "#808080" : s.color;
 
+                        const statusText = row[idx.status] || (isOff ? 'Немає світла' : 'Світло є');
+                        const timeChange = row[idx.time] || '';
+                        const expectation = `${row[idx.expect] || ''} ${row[idx.expectT] || ''}`.trim();
+                        const description = row[idx.desc] || '';
+
                         L.marker([lat, lng], { icon: getIcon(currentIcon) })
                         .bindPopup(`
                             <div class="popup-box">
-                                <b>${row[idx.addr] || 'Адреса'}</b><br>
-                                <span class="status-tag" style="background:${badgeColor}">${row[idx.status] || (isOff ? 'Немає світла' : 'Світло є')}</span><br>
-                                <small><b>Опис:</b> ${row[idx.desc] || '—'}</small><br>
-                                <small><b>Прогноз:</b> ${row[idx.fore] || '—'}</small><br>
-                                <hr style="border:0; border-top:1px solid #eee; margin:5px 0;">
-                                <small style="color:#999">Оновлено: ${row[idx.upd] || 'щойно'}</small>
+                                <span class="p-addr">${row[idx.addr] || 'Адреса'}</span>
+                                <span class="status-tag" style="background:${badgeColor}">${statusText}</span>
+                                
+                                <div class="info-row">
+                                    <span class="label">Змінено о:</span>
+                                    <span class="val">${timeChange || '—'}</span>
+                                </div>
+                                
+                                ${expectation ? `
+                                <div class="info-row">
+                                    <span class="label">Графік:</span>
+                                    <span class="val">${expectation}</span>
+                                </div>` : ''}
+
+                                ${description ? `
+                                <div class="divider"></div>
+                                <div class="info-row">
+                                    <span class="label">Опис:</span>
+                                    <span class="val">${description}</span>
+                                </div>` : ''}
+                                
+                                <div class="divider"></div>
+                                <div style="font-size:10px; color:#aaa; text-align:right;">Черга ${s.name}</div>
                             </div>
                         `).addTo(layers[s.name]);
                         pointsCount++;
