@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Slavutych - Emergency Ready</title>
+    <title>Svitlo Slavutych - Live Control</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -13,43 +13,47 @@
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
 
-        /* Екстрений банер */
+        /* Екстрений банер - тепер яскравіший та помітніший */
         #emergency-banner {
             display: none;
             position: absolute;
             top: 0; width: 100%;
-            background: #ff0000;
+            background: #d94141;
             color: white;
             z-index: 2005;
-            padding: 12px 0;
+            padding: 12px 15px;
             font-weight: bold;
             text-align: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.4);
+            font-size: 14px;
+            box-sizing: border-box;
         }
-        .marquee { display: inline-block; white-space: nowrap; animation: marquee 15s linear infinite; }
-        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
 
-        /* Кнопки */
+        /* Кнопки інтерфейсу */
         .ui-btn { position: absolute; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; }
-        .side-btn { left: 15px; top: 55px; width: 48px; height: 48px; } /* Трохи опустив через банер */
-        .info-btn { left: 15px; top: 115px; width: 48px; height: 48px; color: #228BE6; font-size: 20px; font-weight: bold; }
-        .graph-btn { left: 15px; top: 175px; width: 48px; height: 48px; }
-        .forecast-btn { left: 15px; top: 235px; width: 48px; height: 48px; font-size: 22px; }
+        .side-btn { left: 15px; top: 15px; width: 48px; height: 48px; }
+        .info-btn { left: 15px; top: 75px; width: 48px; height: 48px; color: #228BE6; font-size: 20px; font-weight: bold; }
+        .graph-btn { left: 15px; top: 135px; width: 48px; height: 48px; }
+        .forecast-btn { left: 15px; top: 195px; width: 48px; height: 48px; font-size: 22px; }
+
+        /* Зміщення кнопок вниз, якщо є банер */
+        .banner-active .side-btn { top: 65px; }
+        .banner-active .info-btn { top: 125px; }
+        .banner-active .graph-btn { top: 185px; }
+        .banner-active .forecast-btn { top: 245px; }
 
         /* Модалки */
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2100; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2100; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-content { background: white; border-radius: 20px; padding: 25px; width: 100%; max-width: 350px; position: relative; }
-        .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; }
+        .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; color: #aaa; }
 
-        .forecast-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+        .forecast-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
         .f-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; }
     </style>
 </head>
 <body>
 
-    <div id="emergency-banner"><div class="marquee" id="emergency-text"></div></div>
-
+    <div id="emergency-banner"><span id="emergency-text"></span></div>
     <div id="map"></div>
 
     <div class="ui-btn side-btn" onclick="toggleMenu()"><img src="https://img.icons8.com/material-rounded/24/228BE6/layers.png"/></div>
@@ -60,82 +64,94 @@
     <div class="modal" id="forecastModal" onclick="this.style.display='none'">
         <div class="modal-content" onclick="event.stopPropagation()">
             <span class="close-modal" onclick="document.getElementById('forecastModal').style.display='none'">&times;</span>
-            <h3 style="margin-top:0">Наступні події</h3>
-            <div id="forecast-list"></div>
-            <p style="font-size:11px; color:#999; margin-top:15px; text-align:center;">Дані згідно офіційних графіків</p>
+            <h3 style="margin-top:0">Майбутні події</h3>
+            <div id="forecast-list">Оновлення даних...</div>
+            <p style="font-size:11px; color:#999; margin-top:15px; text-align:center;">Інформація згідно аркуша MapData</p>
         </div>
     </div>
 
     <script>
-        const MAP_DATA_GID = "1507727419"; // ЗАМІНІТЬ на GID вашого аркуша MapData
         const DOC_ID = "2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs";
-        
-        let mapSettings = { emergency: "", queues: {} };
+        const MAP_DATA_GID = "1910800617"; // Оновлений GID
 
-        // 1. Отримання налаштувань з MapData
-        async function fetchMapSettings() {
+        const QUEUE_CONFIG = {
+            "1.1": { gid: "0", icon: "red" },
+            "2.1": { gid: "1407012161", icon: "blue" },
+            "3.1": { gid: "774761347", icon: "violet" },
+            "3.2": { gid: "1047238720", icon: "gold" },
+            "4.1": { gid: "877384835", icon: "orange" },
+            "6.1": { gid: "1811736051", icon: "green" }
+        };
+
+        const map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+
+        function getIcon(color) {
+            return new L.Icon({
+                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+            });
+        }
+
+        // --- ФУНКЦІЯ ПІДКЛЮЧЕННЯ ДО MAPDATA ---
+        async function updateFromMapData() {
             try {
                 const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${MAP_DATA_GID}&t=${Date.now()}`;
                 const res = await fetch(url);
                 const csv = await res.text();
-                const rows = csv.split(/\r?\n/).map(r => r.split(','));
+                // Складний спліт для обробки ком всередині лапок (для тексту повідомлення)
+                const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
 
-                // Текст з C10 (Рядок 9, Індекс 2)
-                const emerText = rows[9] ? rows[9][2] : "";
+                // 1. Екстрене повідомлення (Рядок 10, стовпчик C -> index [9][2])
+                const msg = rows[9] ? rows[9][2]?.replace(/"/g, '') : "";
                 const banner = document.getElementById('emergency-banner');
-                if(emerText && emerText.trim() !== "") {
-                    document.getElementById('emergency-text').innerText = "⚠️ " + emerText;
+                if (msg && msg.trim().length > 1) {
+                    document.getElementById('emergency-text').innerText = "⚠️ " + msg;
                     banner.style.display = "block";
+                    document.body.classList.add('banner-active');
                 } else {
                     banner.style.display = "none";
+                    document.body.classList.remove('banner-active');
                 }
 
-                // Зчитуємо дані черг (A, B, C, D)
-                for(let i=1; i<=6; i++) {
-                    if(rows[i]) {
-                        mapSettings.queues[rows[i][0]] = {
-                            color: rows[i][1] || "#888",
-                            nextEvent: rows[i][2] || "немає даних",
-                            eventTime: rows[i][3] || ""
-                        };
+                // 2. Прогноз (Рядки 2-7)
+                let fHtml = "";
+                for (let i = 1; i <= 6; i++) {
+                    if (rows[i]) {
+                        const name = rows[i][0];
+                        const color = rows[i][1] || "#333";
+                        const event = rows[i][2] || "—";
+                        const time = rows[i][3] || "";
+                        fHtml += `
+                        <div class="forecast-row">
+                            <div style="display:flex; align-items:center;">
+                                <div class="f-dot" style="background:${color}"></div>
+                                <b>Черга ${name}</b>
+                            </div>
+                            <div style="font-size:13px">${event} <b style="color:#228BE6">${time}</b></div>
+                        </div>`;
                     }
                 }
-                updateForecastUI();
-            } catch(e) { console.error("MapData Error:", e); }
+                document.getElementById('forecast-list').innerHTML = fHtml;
+
+            } catch (e) { console.error("MapData Sync Error", e); }
         }
 
-        function updateForecastUI() {
-            const list = document.getElementById('forecast-list');
-            list.innerHTML = Object.keys(mapSettings.queues).map(q => {
-                const data = mapSettings.queues[q];
-                return `
-                    <div class="forecast-row">
-                        <div style="display:flex; align-items:center;">
-                            <div class="f-dot" style="background:${data.color}"></div>
-                            <b>Черга ${q}</b>
-                        </div>
-                        <div style="font-size:13px;">
-                            ${data.nextEvent} <span style="font-weight:bold; color:#228BE6;">${data.eventTime}</span>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
+        // --- РЕШТА ФУНКЦІЙ МАПИ ---
         function toggleModal(id) {
             const m = document.getElementById(id);
             m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
         }
 
-        // Початкове завантаження та цикл оновлення
-        fetchMapSettings();
-        // Далі йде ваш попередній скрипт мапи (fetchSheet, refreshAll)...
-        // Важливо: у функціях малювання маркерів тепер можна використовувати mapSettings.queues[qName].color
-        
-        setInterval(() => {
-            fetchMapSettings();
-            // refreshAll(); // Оновлення маркерів
-        }, 60000);
+        // Ініціалізація
+        updateFromMapData();
+        setInterval(updateFromMapData, 30000); // Оновлюємо прогноз та банер кожні 30 сек.
+
+        // Завантаження черг (ваша існуюча логіка)
+        Object.keys(QUEUE_CONFIG).forEach(q => {
+            // Тут ваш код fetchQueue...
+        });
 
     </script>
 </body>
