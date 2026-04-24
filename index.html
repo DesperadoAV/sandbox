@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Slavutych - Pro</title>
+    <title>Svitlo Slavutych - Fixed</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -42,20 +42,21 @@
         .banner-active .q-menu { top: 65px; }
         .q-menu-title { font-weight: bold; font-size: 16px; padding: 16px; border-bottom: 1px solid #eee; text-align: center; }
         #menu-list { overflow-y: auto; flex: 1; }
-        .q-item-container { border-bottom: 1px solid #f0f0f0; }
-        .q-header { display: flex; align-items: center; padding: 12px; cursor: pointer; }
-        .q-color-box { width: 12px; height: 12px; border-radius: 3px; margin-right: 10px; }
-        .address-list { display: none; background: #f9f9f9; max-height: 200px; overflow-y: auto; }
-        .address-item { padding: 9px 15px 9px 42px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; color: #555; }
+        .q-header { display: flex; align-items: center; padding: 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
+        .q-color-box { width: 15px; height: 15px; border-radius: 4px; margin-right: 12px; }
+        .q-count { font-size: 11px; color: #999; margin-left: auto; }
 
         /* Модалки */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2100; display: none; align-items: center; justify-content: center; padding: 20px; }
         .modal-content { background: white; border-radius: 20px; padding: 25px; width: 100%; max-width: 350px; position: relative; }
-        .forecast-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #f0f0f0; }
-        .f-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; }
+        .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; color: #aaa; }
+        
+        /* Прогноз стилі */
+        .forecast-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+        .f-dot { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; flex-shrink: 0; }
     </style>
 </head>
-<body class="">
+<body>
 
     <div id="emergency-banner"><span id="emergency-text"></span></div>
     <div id="map"></div>
@@ -77,13 +78,24 @@
 
     <div class="modal" id="forecastModal" onclick="this.style.display='none'">
         <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-modal" onclick="document.getElementById('forecastModal').style.display='none'">&times;</span>
             <h3 style="margin-top:0">Майбутні події</h3>
             <div id="forecast-list">Завантаження...</div>
         </div>
     </div>
 
+    <div class="modal" id="infoModal" onclick="this.style.display='none'">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-modal" onclick="document.getElementById('infoModal').style.display='none'">&times;</span>
+            <h3>Про мапу</h3>
+            <p>Дана мапа відображає актуальний стан електропостачання в м. Славутич.</p>
+            <p style="font-size: 13px; color: #666;">Дані оновлюються автоматично згідно з графіками.</p>
+        </div>
+    </div>
+
     <div class="modal" id="graphModal" onclick="this.style.display='none'">
         <div class="modal-content" style="max-width: 600px;" onclick="event.stopPropagation()">
+            <span class="close-modal" onclick="document.getElementById('graphModal').style.display='none'">&times;</span>
             <img src="https://raw.githubusercontent.com/amvasylets/Svitlo_in_Slavutych/refs/heads/main/charts/summary_today.png" style="width:100%; border-radius:10px;">
         </div>
     </div>
@@ -106,8 +118,7 @@
 
         let layers = {}; 
         let activeQueues = new Set(Object.keys(QUEUE_CONFIG));
-        let sheetData = {};
-        let markersStore = {};
+        let counts = {};
 
         function getIcon(color) {
             return new L.Icon({
@@ -117,7 +128,6 @@
             });
         }
 
-        // --- MAP DATA ТА БАНЕР ---
         async function updateMapSettings() {
             try {
                 const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${MAP_DATA_GID}&t=${Date.now()}`;
@@ -125,6 +135,7 @@
                 const csv = await res.text();
                 const rows = csv.split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
 
+                // Банер
                 const msg = rows[9] ? rows[9][2]?.replace(/"/g, '') : "";
                 const banner = document.getElementById('emergency-banner');
                 if (msg && msg.trim().length > 1) {
@@ -136,12 +147,21 @@
                     document.body.classList.remove('banner-active');
                 }
 
+                // Вікно прогнозів
                 let fHtml = "";
                 for (let i = 1; i <= 6; i++) {
                     if (rows[i]) {
-                        fHtml += `<div class="forecast-row">
-                            <div><span class="f-dot" style="background:${rows[i][1]}"></span><b>${rows[i][0]}</b></div>
-                            <div style="font-size:13px">${rows[i][2]} <b style="color:#228BE6">${rows[i][3]}</b></div>
+                        const qName = rows[i][0];
+                        const qColor = rows[i][1] || "#333";
+                        const qEvent = rows[i][2] || "—";
+                        const qTime = rows[i][3] || "";
+                        fHtml += `
+                        <div class="forecast-row">
+                            <div style="display:flex; align-items:center;">
+                                <div class="f-dot" style="background:${qColor}"></div>
+                                <b>Черга ${qName}</b>
+                            </div>
+                            <div style="font-size:13px">${qEvent} <b style="color:#228BE6">${qTime}</b></div>
                         </div>`;
                     }
                 }
@@ -149,36 +169,57 @@
             } catch (e) { console.error(e); }
         }
 
-        // --- ЗАВАНТАЖЕННЯ МАРКЕРІВ ---
         async function fetchQueue(qName) {
             const conf = QUEUE_CONFIG[qName];
             try {
                 const url = `https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${conf.gid}&t=${Date.now()}`;
                 const res = await fetch(url);
                 const csv = await res.text();
-                const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim()));
+                const rows = csv.split(/\r?\n/).map(row => row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
                 
                 if (layers[qName]) map.removeLayer(layers[qName]);
                 layers[qName] = L.layerGroup();
-                sheetData[qName] = [];
-                markersStore[qName] = {};
+                let count = 0;
 
                 for (let i = 2; i < rows.length; i++) {
                     const row = rows[i];
                     if (!row[3]) continue;
                     const lat = parseFloat(row[3].replace(',', '.'));
                     const lng = parseFloat(row[4].replace(',', '.'));
-                    const hasLight = (row[5]?.toLowerCase() === 'y');
-
-                    const marker = L.marker([lat, lng], { icon: getIcon(hasLight ? conf.icon : "grey") })
-                    .bindPopup(`<b>${row[1]}</b><br>${hasLight ? 'Світло є' : 'Немає'}`);
+                    const hasLight = (row[5]?.replace(/"/g, '').toLowerCase() === 'y');
                     
-                    marker.addTo(layers[qName]);
-                    markersStore[qName][row[1]] = marker;
-                    sheetData[qName].push(row[1]);
+                    L.marker([lat, lng], { icon: getIcon(hasLight ? conf.icon : "grey") })
+                    .bindPopup(`<b>${row[1]}</b><br>${hasLight ? 'Світло є' : 'Немає світла'}`)
+                    .addTo(layers[qName]);
+                    count++;
                 }
+                counts[qName] = count;
                 if (activeQueues.has(qName)) layers[qName].addTo(map);
             } catch (e) { console.error(e); }
+        }
+
+        function renderMenu() {
+            const list = document.getElementById('menu-list');
+            list.innerHTML = Object.keys(QUEUE_CONFIG).map(name => `
+                <div class="q-header" onclick="toggleVisibility('${name}')">
+                    <div class="q-eye">
+                        <img src="https://img.icons8.com/material-rounded/20/${activeQueues.has(name)?'228BE6':'999999'}/visible.png"/>
+                    </div>
+                    <div class="q-color-box" style="background:${QUEUE_CONFIG[name].color}"></div>
+                    <span style="font-size:14px">Черга ${name}</span>
+                    <span class="q-count">${counts[name] || 0}</span>
+                </div>`).join('');
+        }
+
+        function toggleVisibility(name) {
+            if (activeQueues.has(name)) {
+                activeQueues.delete(name);
+                map.removeLayer(layers[name]);
+            } else {
+                activeQueues.add(name);
+                layers[name].addTo(map);
+            }
+            renderMenu();
         }
 
         async function refreshAll() {
@@ -189,44 +230,9 @@
             renderMenu();
         }
 
-        function renderMenu() {
-            const list = document.getElementById('menu-list');
-            list.innerHTML = Object.keys(QUEUE_CONFIG).map(name => `
-                <div class="q-item-container">
-                    <div class="q-header" onclick="toggleAccordion('${name}')">
-                        <div class="q-eye" onclick="event.stopPropagation(); toggleVisibility('${name}')">
-                            <img src="https://img.icons8.com/material-rounded/20/${activeQueues.has(name)?'228BE6':'999999'}/visible.png"/>
-                        </div>
-                        <div class="q-color-box" style="background:${QUEUE_CONFIG[name].color}"></div>
-                        <span style="flex:1; font-size:14px">Черга ${name}</span>
-                    </div>
-                    <div class="address-list" id="list-${name}">
-                        ${(sheetData[name]||[]).map(addr => `<div class="address-item" onclick="focusAddress('${name}', '${addr}')">${addr}</div>`).join('')}
-                    </div>
-                </div>`).join('');
-        }
-
-        function toggleVisibility(name) {
-            if (activeQueues.has(name)) { activeQueues.delete(name); map.removeLayer(layers[name]); }
-            else { activeQueues.add(name); layers[name].addTo(map); }
-            renderMenu();
-        }
-
-        function toggleAccordion(name) {
-            const target = document.getElementById(`list-${name}`);
-            const isVisible = target.style.display === 'block';
-            document.querySelectorAll('.address-list').forEach(l => l.style.display = 'none');
-            target.style.display = isVisible ? 'none' : 'block';
-        }
-
-        function focusAddress(q, a) {
-            const m = markersStore[q][a];
-            if(m) { map.setView(m.getLatLng(), 18); m.openPopup(); }
-        }
-
         function toggleModal(id) {
             const m = document.getElementById(id);
-            m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
+            if (m) m.style.display = (m.style.display === 'flex') ? 'none' : 'flex';
         }
 
         function toggleMenu() {
