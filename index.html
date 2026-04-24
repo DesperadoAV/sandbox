@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="icon" type="image/png" href="https://i.postimg.cc/6qXnY1GR/1770893073813.png">
-    <title>Svitlo Slavutych - Updated UI</title>
+    <title>Svitlo Slavutych - Interactive Menu</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -12,26 +12,42 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
+        
         .side-btn { position: absolute; left: 15px; top: 15px; width: 48px; height: 48px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.4); }
-        .q-menu { position: absolute; left: 75px; top: 15px; width: 260px; background: white; border-radius: 16px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); padding: 16px; border: 1px solid #ddd; }
-        .q-menu-title { font-weight: bold; font-size: 16px; margin-bottom: 12px; border-bottom: 1px solid #eee; padding-bottom: 8px; text-align: center; }
-        .q-menu-item { display: flex; align-items: center; padding: 10px; gap: 12px; cursor: pointer; border-radius: 8px; }
-        .q-color-box { width: 18px; height: 18px; border-radius: 5px; }
+        
+        /* Оновлене меню */
+        .q-menu { position: absolute; left: 75px; top: 15px; width: 280px; max-height: 80vh; background: white; border-radius: 16px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; border: 1px solid #ddd; }
+        .q-menu-title { font-weight: bold; font-size: 16px; padding: 16px; border-bottom: 1px solid #eee; text-align: center; background: #fcfcfc; }
+        #menu-list { overflow-y: auto; flex: 1; }
 
-        /* Стилі вікна */
-        .popup-box { font-size: 14px; line-height: 1.5; min-width: 220px; color: #333; }
-        .p-addr { font-size: 16px; font-weight: bold; display: block; color: #000; }
-        .p-desc { font-size: 13px; color: #666; margin-top: 2px; font-style: italic; display: block; }
-        .status-tag { display: inline-block; padding: 4px 12px; border-radius: 8px; color: white; font-weight: bold; margin: 10px 0 5px 0; font-size: 12px; text-transform: uppercase; }
-        .p-time { font-size: 13px; font-weight: 500; color: #222; margin-bottom: 4px; }
-        .p-plan { font-size: 12px; color: #555; background: #f0f0f0; padding: 4px 8px; border-radius: 5px; margin-top: 5px; }
-        .divider { height: 1px; background: #eee; margin: 8px 0; }
+        .q-item-container { border-bottom: 1px solid #f0f0f0; }
+        .q-header { display: flex; align-items: center; padding: 12px; cursor: pointer; transition: 0.2s; }
+        .q-header:hover { background: #f9f9f9; }
+        
+        .q-eye { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; margin-right: 8px; opacity: 0.6; }
+        .q-eye:hover { opacity: 1; transform: scale(1.1); }
+        .q-eye.hidden { opacity: 0.2; }
+
+        .q-color-box { width: 14px; height: 14px; border-radius: 4px; margin-right: 10px; }
+        .q-name { flex: 1; font-size: 14px; font-weight: 500; }
+        .q-count { font-size: 12px; color: #999; margin-left: 8px; }
+
+        /* Список адрес всередині черги */
+        .address-list { display: none; background: #f8f9fa; max-height: 200px; overflow-y: auto; font-size: 13px; border-top: 1px solid #eee; }
+        .address-item { padding: 8px 15px 8px 45px; border-bottom: 1px solid #eee; cursor: pointer; color: #444; }
+        .address-item:hover { background: #eef2f7; color: #000; }
+        .address-item:last-child { border-bottom: none; }
+
+        /* Стилі балуна (попередні) */
+        .popup-box { font-size: 14px; line-height: 1.5; min-width: 200px; }
+        .status-tag { display: inline-block; padding: 3px 10px; border-radius: 6px; color: white; font-weight: bold; margin: 8px 0; font-size: 11px; }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
     <div class="side-btn" onclick="toggleMenu()"><img src="https://img.icons8.com/material-rounded/28/228BE6/layers.png"/></div>
+    
     <div class="q-menu" id="qMenu">
         <div class="q-menu-title">Черги Славутича</div>
         <div id="menu-list"></div>
@@ -54,7 +70,8 @@
 
         let layers = {}; 
         let activeQueues = new Set(Object.keys(QUEUE_CONFIG));
-        let sheetStats = {}; 
+        let sheetData = {}; // Зберігаємо дані адрес
+        let markersStore = {}; // Зберігаємо посилання на маркери для швидкого переходу
 
         function getIcon(colorName) {
             return new L.Icon({
@@ -81,48 +98,38 @@
                 
                 if (layers[qName]) map.removeLayer(layers[qName]);
                 layers[qName] = L.layerGroup();
-                let count = 0;
+                sheetData[qName] = [];
+                markersStore[qName] = {};
 
-                for (let i = 1; i < rows.length; i++) {
+                // Пропускаємо заголовок (i=0) та резервний рядок з координатами (i=1), починаємо з i=2
+                for (let i = 2; i < rows.length; i++) {
                     const row = rows[i];
                     if (row.length < 6) continue;
 
                     const lat = parseFloat(row[3]?.replace(',', '.'));
                     const lng = parseFloat(row[4]?.replace(',', '.'));
+                    const addr = row[1];
 
-                    if (!isNaN(lat) && !isNaN(lng)) {
-                        const trigger = row[5]?.toLowerCase(); 
-                        const hasLight = (trigger === 'y');
-                        
+                    if (!isNaN(lat) && !isNaN(lng) && addr) {
+                        const hasLight = (row[5]?.toLowerCase() === 'y');
                         const markerColor = hasLight ? conf.icon : "grey";
                         const tagBg = hasLight ? conf.color : "#808080";
                         
-                        // Формування тексту статусу
-                        const statusText = hasLight ? "Світло є" : "Світла немає";
-                        const timeText = row[8] ? `З ${row[8]}` : "";
-                        const plan = `${row[9]||''} ${row[10]||''}`.trim();
-                        const description = row[2] || "";
-
-                        L.marker([lat, lng], { icon: getIcon(markerColor) })
+                        const marker = L.marker([lat, lng], { icon: getIcon(markerColor) })
                         .bindPopup(`
                             <div class="popup-box">
-                                <span class="p-addr">${row[1]}</span>
-                                ${description ? `<span class="p-desc">${description}</span>` : ''}
-                                
-                                <span class="status-tag" style="background:${tagBg}">${statusText}</span>
-                                
-                                ${timeText ? `<div class="p-time">${timeText}</div>` : ''}
-                                
-                                ${plan ? `<div class="p-plan"><b>План:</b> ${plan}</div>` : ''}
-                                
-                                <div class="divider"></div>
-                                <div style="font-size:9px; color:#ccc; text-align:right">Черга ${qName}</div>
+                                <b>${addr}</b>
+                                ${row[2] ? `<br><small style="color:grey">${row[2]}</small>` : ''}
+                                <br><span class="status-tag" style="background:${tagBg}">${hasLight ? "Світло є" : "Світла немає"}</span>
+                                <br><small>З ${row[8] || '—'}</small>
                             </div>
-                        `).addTo(layers[qName]);
-                        count++;
+                        `);
+                        
+                        marker.addTo(layers[qName]);
+                        markersStore[qName][addr] = marker;
+                        sheetData[qName].push(addr);
                     }
                 }
-                sheetStats[qName] = count;
                 if (activeQueues.has(qName)) layers[qName].addTo(map);
             } catch (e) { console.error(e); }
         }
@@ -131,31 +138,67 @@
             const names = Object.keys(QUEUE_CONFIG);
             for (const name of names) {
                 await fetchSheet(name);
-                await sleep(300); 
+                await sleep(200); 
             }
             renderMenu();
         }
 
         function renderMenu() {
             const list = document.getElementById('menu-list');
-            list.innerHTML = Object.keys(QUEUE_CONFIG).map(name => `
-                <div class="q-menu-item" onclick="toggleLayer('${name}')" style="opacity:${activeQueues.has(name)?1:0.5}">
-                    <div class="q-color-box" style="background:${QUEUE_CONFIG[name].color}"></div>
-                    <span style="flex:1">Черга ${name}</span>
-                    <span style="font-size:11px; color:#888">${sheetStats[name] || 0}</span>
-                </div>
-            `).join('');
+            list.innerHTML = Object.keys(QUEUE_CONFIG).map(name => {
+                const isVisible = activeQueues.has(name);
+                return `
+                <div class="q-item-container" id="cont-${name}">
+                    <div class="q-header">
+                        <div class="q-eye ${isVisible ? '' : 'hidden'}" onclick="event.stopPropagation(); toggleVisibility('${name}')">
+                            <img src="https://img.icons8.com/material-rounded/20/${isVisible ? '228BE6' : '999999'}/${isVisible ? 'visible' : 'invisible'}.png"/>
+                        </div>
+                        <div class="q-header-click" style="display:flex; align-items:center; flex:1;" onclick="toggleAccordion('${name}')">
+                            <div class="q-color-box" style="background:${QUEUE_CONFIG[name].color}"></div>
+                            <span class="q-name">Черга ${name}</span>
+                            <span class="q-count">${(sheetData[name] || []).length}</span>
+                        </div>
+                    </div>
+                    <div class="address-list" id="list-${name}">
+                        ${(sheetData[name] || []).map(addr => `
+                            <div class="address-item" onclick="focusAddress('${name}', '${addr}')">${addr}</div>
+                        `).join('')}
+                    </div>
+                </div>`;
+            }).join('');
         }
 
-        function toggleLayer(name) {
+        function toggleVisibility(name) {
             if (activeQueues.has(name)) {
                 activeQueues.delete(name);
-                if (layers[name]) map.removeLayer(layers[name]);
+                map.removeLayer(layers[name]);
             } else {
                 activeQueues.add(name);
-                if (layers[name]) layers[name].addTo(map);
+                layers[name].addTo(map);
             }
             renderMenu();
+        }
+
+        function toggleAccordion(name) {
+            const allLists = document.querySelectorAll('.address-list');
+            const targetList = document.getElementById(`list-${name}`);
+            const isOpened = targetList.style.display === 'block';
+
+            // Згортаємо всі
+            allLists.forEach(l => l.style.display = 'none');
+
+            // Розгортаємо потрібний, якщо він був закритий
+            if (!isOpened) {
+                targetList.style.display = 'block';
+            }
+        }
+
+        function focusAddress(qName, addr) {
+            const marker = markersStore[qName][addr];
+            if (marker) {
+                map.setView(marker.getLatLng(), 18);
+                marker.openPopup();
+            }
         }
 
         refreshAll();
