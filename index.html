@@ -35,23 +35,20 @@
         .address-list { display: none; background: #f9f9f9; }
         .address-item { padding: 10px 15px 10px 20px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; color: #555; }
 
-        /* Стилі для багатосторінкової модалки */
+        /* Стилі модалок */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2100; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
-        .modal-content { background: white; border-radius: 28px; padding: 25px; width: 100%; max-width: 420px; text-align: center; position: relative; min-height: 350px; display: flex; flex-direction: column; }
-        .info-page { display: none; flex-direction: column; height: 100%; }
+        .modal-content { background: white; border-radius: 28px; padding: 25px; width: 100%; max-width: 400px; text-align: center; position: relative; max-height: 85vh; display: flex; flex-direction: column; }
+        .info-page { display: none; flex-direction: column; overflow-y: auto; }
         .info-page.active { display: flex; }
         
-        .close-x { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #ccc; cursor: pointer; border: none; background: none; }
-        .modal-title { color: #228BE6; font-size: 22px; font-weight: bold; margin-bottom: 15px; display: block; }
+        .close-x { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #ccc; cursor: pointer; border: none; background: none; z-index: 10; }
+        .modal-title { color: #228BE6; font-size: 22px; font-weight: bold; margin-bottom: 15px; }
         .modal-text { font-size: 15px; color: #333; line-height: 1.5; margin-bottom: 15px; }
-        .modal-divider { height: 1px; background: #eee; margin: 15px 0; }
         
         .nav-btn { display: flex; align-items: center; gap: 12px; padding: 14px; margin: 8px 0; background: #f8f9fa; border-radius: 15px; text-decoration: none; color: #333; font-weight: bold; cursor: pointer; border: 1px solid #eee; }
-        .nav-btn img { width: 24px; height: 24px; }
-        
-        .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; text-decoration: none; color: #333; font-size: 14px; }
+        .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; text-decoration: none; color: #333; font-size: 14px; width: 100%; box-sizing: border-box; }
         .channel-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; }
-        .back-btn { align-self: flex-start; background: none; border: none; color: #228BE6; font-weight: bold; cursor: pointer; padding: 5px; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; font-size: 16px; }
+        .back-btn { align-self: flex-start; background: none; border: none; color: #228BE6; font-weight: bold; cursor: pointer; padding: 5px; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
     </style>
 </head>
 <body>
@@ -80,45 +77,37 @@
 
             <div id="page-main" class="info-page active">
                 <span class="modal-title">Svitlo Slavutych</span>
-                <p class="modal-text">Цей проект допомагає мешканцям міста Славутич відстежувати стан електропостачання в режимі реального часу.</p>
-                <p class="modal-text" style="font-size: 13px; color: #666;">Дані оновлюються автоматично з офіційних джерел та звітів користувачів.</p>
-                
-                <div class="modal-divider"></div>
-                
+                <p class="modal-text">Проект моніторингу електропостачання міста Славутич.</p>
                 <div class="nav-btn" onclick="showPage('page-tg')">
-                    <img src="https://img.icons8.com/color/48/telegram-app.png"> Telegram канали
+                    <img src="https://img.icons8.com/color/24/telegram-app.png"> Telegram канали
                 </div>
                 <div class="nav-btn" onclick="showPage('page-vb')">
-                    <img src="https://img.icons8.com/color/48/viber.png"> Viber спільноти
+                    <img src="https://img.icons8.com/color/24/viber.png"> Viber спільноти
                 </div>
             </div>
 
             <div id="page-tg" class="info-page">
                 <button class="back-btn" onclick="showPage('page-main')">← Назад</button>
                 <span class="modal-title" style="font-size: 18px;">Telegram канали</span>
-                <div style="overflow-y: auto; max-height: 350px;">
-                    <a href="https://t.me/svitlo_slavutych" target="_blank" class="channel-item"><span>📢 Головні новини</span> 🔗</a>
-                    <a href="https://t.me/svitlo_slavutych_1_1" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff0000"></div>Черга 1.1</div> 🔗</a>
-                    <a href="https://t.me/svitlo_slavutych_2_1" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#3498db"></div>Черга 2.1</div> 🔗</a>
-                    <a href="https://t.me/svitlo_slavutych_3_1" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#9900ff"></div>Черга 3.1</div> 🔗</a>
-                    <a href="https://t.me/svitlo_slavutych_3_2" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ffcc00"></div>Черга 3.2</div> 🔗</a>
-                    <a href="https://t.me/svitlo_slavutych_4_1" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff9900"></div>Черга 4.1</div> 🔗</a>
-                    <a href="https://t.me/svitlo_slavutych_6_1" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#009933"></div>Черга 6.1</div> 🔗</a>
-                </div>
+                <a href="https://t.me/svitlo_slavutych" target="_blank" class="channel-item" onclick="event.stopPropagation()"><span>📢 Новини міста</span> 🔗</a>
+                <a href="https://t.me/svitlo_slavutych_1_1" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff0000"></div>Черга 1.1</div> 🔗</a>
+                <a href="https://t.me/svitlo_slavutych_2_1" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#3498db"></div>Черга 2.1</div> 🔗</a>
+                <a href="https://t.me/svitlo_slavutych_3_1" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#9900ff"></div>Черга 3.1</div> 🔗</a>
+                <a href="https://t.me/svitlo_slavutych_3_2" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ffcc00"></div>Черга 3.2</div> 🔗</a>
+                <a href="https://t.me/svitlo_slavutych_4_1" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff9900"></div>Черга 4.1</div> 🔗</a>
+                <a href="https://t.me/svitlo_slavutych_6_1" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#009933"></div>Черга 6.1</div> 🔗</a>
             </div>
 
             <div id="page-vb" class="info-page">
                 <button class="back-btn" onclick="showPage('page-main')">← Назад</button>
                 <span class="modal-title" style="font-size: 18px;">Viber спільноти</span>
-                <div style="overflow-y: auto; max-height: 350px;">
-                    <a href="https://invite.viber.com/?g2=AQB78E%2B3m1A0F1Gf3V9U7yL6uLw9O%2FrR" target="_blank" class="channel-item"><span>📢 Головна група</span> 🔗</a>
-                    <a href="#" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff0000"></div>Черга 1.1</div> 🔗</a>
-                    <a href="#" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#3498db"></div>Черга 2.1</div> 🔗</a>
-                    <a href="#" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#9900ff"></div>Черга 3.1</div> 🔗</a>
-                    <a href="#" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ffcc00"></div>Черга 3.2</div> 🔗</a>
-                    <a href="#" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff9900"></div>Черга 4.1</div> 🔗</a>
-                    <a href="#" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#009933"></div>Черга 6.1</div> 🔗</a>
-                </div>
+                <a href="https://invite.viber.com/?g2=AQB78E%2B3m1A0F1Gf3V9U7yL6uLw9O%2FrR" target="_blank" class="channel-item" onclick="event.stopPropagation()"><span>📢 Головна група</span> 🔗</a>
+                <a href="#" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff0000"></div>Черга 1.1</div> 🔗</a>
+                <a href="#" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#3498db"></div>Черга 2.1</div> 🔗</a>
+                <a href="#" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#9900ff"></div>Черга 3.1</div> 🔗</a>
+                <a href="#" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ffcc00"></div>Черга 3.2</div> 🔗</a>
+                <a href="#" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff9900"></div>Черга 4.1</div> 🔗</a>
+                <a href="#" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#009933"></div>Черга 6.1</div> 🔗</a>
             </div>
         </div>
     </div>
@@ -268,8 +257,9 @@
         
         function toggleModal(id) { 
             const m = document.getElementById(id); 
-            m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; 
-            if(id === 'infoModal') showPage('page-main'); // Скидання на головну при відкритті
+            const isVisible = m.style.display === 'flex';
+            m.style.display = isVisible ? 'none' : 'flex'; 
+            if(!isVisible && id === 'infoModal') showPage('page-main'); 
         }
 
         function showPage(pageId) {
