@@ -218,27 +218,36 @@
 }
 
        function getQIcon(iconName, zoom) {
-            // Визначаємо розмір лампочки залежно від наближення (zoom)
-            let s = zoom <= 14 ? 20 : (zoom === 15 ? 30 : 42);
-    
-            // Словник відповідності імен іконок до твоїх файлів
-            const iconFiles = {
-                "red": "bulb_1_1.png",
-                "blue": "bulb_2_1.png",
-                "purple": "bulb_3_1.png",
-                "yellow": "bulb_3_2.png",
-                "orange": "bulb_4_1.png",
-                "green": "bulb_6_1.png",
-                "grey": "bulb_off.png"
-     };
+    // Визначаємо розмір (трохи збільшив для кращої видимості)
+    let s = zoom <= 14 ? 22 : (zoom === 15 ? 32 : 44);
 
-        return L.icon({
-                iconUrl: iconFiles[iconName] || "bulb_off.png",
-                iconSize: [s, s],
-                iconAnchor: [s/2, s/2],
-                popupAnchor: [0, -s/2]
-            });
-    }
+    const iconFiles = {
+        "red": "bulb_1_1.png",
+        "blue": "bulb_2_1.png",
+        "purple": "bulb_3_1.png",
+        "yellow": "bulb_3_2.png",
+        "orange": "bulb_4_1.png",
+        "green": "bulb_6_1.png",
+        "grey": "bulb_off.png"
+    };
+
+    // Використовуємо divIcon, щоб контролювати контейнер
+    return L.divIcon({
+        className: '', // Прибираємо стандартні стилі Leaflet
+        html: `<div style="
+                    width: ${s}px; 
+                    height: ${s}px; 
+                    display: flex; 
+                    align-items: center; 
+                    justify-content: center;">
+                <img src="${iconFiles[iconName] || "bulb_off.png"}" 
+                     style="width: 100%; height: 100%; object-fit: contain;">
+               </div>`,
+        iconSize: [s, s],
+        iconAnchor: [s/2, s/2],
+        popupAnchor: [0, -s/2]
+    });
+}
 
         map.on('zoomend', () => {
             const z = map.getZoom();
