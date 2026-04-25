@@ -24,7 +24,6 @@
         .zoom-ctrl { position: absolute; right: 15px; bottom: 30px; z-index: 1001; display: flex; flex-direction: column; gap: 8px; }
         .z-btn { width: 44px; height: 44px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; }
         
-        /* Виправлена іконка фортеці */
         .nez-wrap { width: 100%; height: 100%; background: white; border: 2px solid #3498db; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; }
         .nez-wrap img { width: 80%; height: 80%; object-fit: contain; }
 
@@ -36,12 +35,15 @@
         .address-list { display: none; background: #f9f9f9; }
         .address-item { padding: 10px 15px 10px 20px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; color: #555; }
 
-        /* Модальне вікно Інфо */
+        /* Модалка як на скріні image_ef1ef3.png */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2100; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
-        .modal-content { background: white; border-radius: 24px; padding: 25px; width: 100%; max-width: 400px; text-align: center; }
-        .info-divider { height: 1px; background: #eee; margin: 20px 0; }
-        .social-row { display: flex; align-items: center; justify-content: center; gap: 15px; text-decoration: none; font-weight: bold; font-size: 18px; margin: 10px 0; }
-        .social-row img { width: 24px; height: 24px; }
+        .modal-content { background: white; border-radius: 28px; padding: 30px; width: 100%; max-width: 420px; text-align: center; position: relative; }
+        .close-x { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #ccc; cursor: pointer; border: none; background: none; }
+        .modal-title { color: #228BE6; font-size: 22px; font-weight: bold; margin-bottom: 15px; display: block; }
+        .modal-text { font-size: 15px; color: #333; line-height: 1.5; margin-bottom: 10px; }
+        .modal-divider { height: 1px; background: #eee; margin: 20px 0; }
+        .social-container { display: flex; justify-content: space-around; align-items: center; }
+        .soc-link { display: flex; align-items: center; gap: 8px; text-decoration: none; font-size: 24px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -66,18 +68,21 @@
 
     <div class="modal" id="infoModal" onclick="toggleModal('infoModal')">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <h2 style="color:#228BE6; margin:0 0 15px 0;">Svitlo Slavutych</h2>
-            <p style="font-size: 14px; line-height: 1.5; color: #444;">Цей проект допомагає мешканцям міста Славутич відстежувати стан електропостачання в режимі реального часу.</p>
-            <p style="font-size: 14px; line-height: 1.5; color: #444;">Дані оновлюються автоматично з офіційних джерел та звітів користувачів.</p>
+            <button class="close-x" onclick="toggleModal('infoModal')">×</button>
+            <span class="modal-title">Svitlo Slavutych</span>
+            <p class="modal-text">Цей проект допомагає мешканцям міста Славутич відстежувати стан електропостачання в режимі реального часу.</p>
+            <p class="modal-text">Дані оновлюються автоматично з офіційних джерел та звітів користувачів.</p>
             
-            <div class="info-divider"></div>
+            <div class="modal-divider"></div>
             
-            <a href="https://t.me/p_slavutych" target="_blank" class="social-row" style="color: #0088cc;">
-                <img src="https://img.icons8.com/color/48/telegram-app.png"> Telegram канал
-            </a>
-            <a href="https://invite.viber.com/?g2=AQB0WPljT%2B6Y6U6Y6U6Y6U6Y6U6Y6U6Y" target="_blank" class="social-row" style="color: #7360f2;">
-                <img src="https://img.icons8.com/color/48/viber.png"> Viber спільнота
-            </a>
+            <div class="social-container">
+                <a href="https://t.me/svitlo_slavutych" target="_blank" class="soc-link" style="color: #228BE6;">
+                    <span>🔹</span> TG
+                </a>
+                <a href="https://invite.viber.com/?g2=AQB78E%2B3m1A0F1Gf3V9U7yL6uLw9O%2FrR" target="_blank" class="soc-link" style="color: #7360f2;">
+                    <span>💜</span> VB
+                </a>
+            </div>
         </div>
     </div>
 
@@ -99,9 +104,10 @@
         const MAP_DATA_GID = "1910800617";
         const CASTLE_URL = "https://raw.githubusercontent.com/DesperadoAV/sandbox/main/castle_blue.png";
 
+        // ВИПРАВЛЕНО КОЛІР 2.1 НА БЛАКИТНИЙ
         const QUEUE_CONFIG = {
             "1.1": { gid: "0", color: "#ff0000", icon: "red" },
-            "2.1": { gid: "1407012161", color: "#0000ff", icon: "blue" },
+            "2.1": { gid: "1407012161", color: "#3498db", icon: "blue" },
             "3.1": { gid: "774761347", color: "#9900ff", icon: "violet" },
             "3.2": { gid: "1047238720", color: "#ffcc00", icon: "gold" },
             "4.1": { gid: "877384835", color: "#ff9900", icon: "orange" },
