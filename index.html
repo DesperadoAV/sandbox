@@ -246,7 +246,8 @@
                     const isLight = (r[5]?.toLowerCase() === 'y');
                     const m = L.marker([parseFloat(r[3].replace(',','.')), parseFloat(r[4].replace(',','.'))], { icon: getQIcon(isLight ? conf.icon : "grey", map.getZoom()) });
                     m._isLight = isLight;
-                    m.bindPopup(`<b>${r[1]}</b><br>${isLight?'💡 Світло є':'🕯️ Світла немає'}<br><small>Оновлено: ${r[8]||''}</small>`);
+                    const addressDesc = r[2] ? `<br><i>${r[2]}</i>` : ''; 
+                    m.bindPopup(`<b>${r[1]}</b>${addressDesc}<br>${isLight?'💡 Світло є':'🕯️ Світла немає'}<br><small>Оновлено: ${r[8]||''}</small>`);
                     m.addTo(layers[q]);
                     sheetData[q].push(r[1]); markersStore[q][r[1]] = m;
                 }
