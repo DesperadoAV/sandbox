@@ -12,13 +12,18 @@
     <style>
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
+        
+        /* Кнопки інтерфейсу */
         .ui-btn { position: absolute; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; }
         .side-btn { left: 15px; top: 15px; width: 48px; height: 48px; }
         .info-btn { left: 15px; top: 75px; width: 48px; height: 48px; color: #228BE6; font-size: 20px; font-weight: bold; }
         .graph-btn { left: 15px; top: 135px; width: 48px; height: 48px; }
         .forecast-btn { left: 15px; top: 195px; width: 48px; height: 48px; font-size: 22px; }
+        
         .zoom-ctrl { position: absolute; right: 15px; bottom: 30px; z-index: 1001; display: flex; flex-direction: column; gap: 8px; }
         .z-btn { width: 44px; height: 44px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; }
+        
+        /* Меню */
         .q-menu { position: absolute; left: 75px; top: 15px; width: 280px; max-height: 85vh; background: white; border-radius: 16px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
         #menu-list { overflow-y: auto; flex: 1; }
         .q-item-container { border-bottom: 1px solid #f0f0f0; }
@@ -29,12 +34,10 @@
         .q-name { flex: 1; font-size: 14px; font-weight: bold; }
         .address-list { display: none; background: #f9f9f9; max-height: 200px; overflow-y: auto; }
         .address-item { padding: 10px 15px 10px 35px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; color: #444; }
+        
+        /* Модалки */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2100; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
         .modal-content { background: white; border-radius: 24px; padding: 25px; width: 100%; max-width: 360px; position: relative; max-height: 90vh; overflow-y: auto; }
-        .modal-screen { display: none; flex-direction: column; gap: 12px; }
-        .modal-screen.active { display: flex; }
-        .btn-link { display: flex; align-items: center; padding: 14px; border-radius: 14px; text-decoration: none; color: #333; font-weight: 600; background: #f7f8fa; border: 1px solid #eee; cursor: pointer; }
-        .grid-item { padding: 12px; text-align: center; border-radius: 12px; text-decoration: none; color: white; font-weight: bold; font-size: 14px; }
         .forecast-row { display: flex; justify-content: space-between; align-items: center; padding: 12px; margin-bottom: 8px; border-radius: 10px; color: white; font-weight: bold; font-size: 14px; }
     </style>
 </head>
@@ -57,11 +60,16 @@
         <div id="menu-list"></div>
     </div>
 
+    <div class="modal" id="forecastModal" onclick="toggleModal('forecastModal')">
+        <div class="modal-content" onclick="event.stopPropagation()"><h3 style="margin-top:0">Майбутні події</h3><div id="forecast-list"></div></div>
+    </div>
+    <div class="modal" id="graphModal" onclick="toggleModal('graphModal')">
+        <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()"><img src="https://raw.githubusercontent.com/amvasylets/Svitlo_in_Slavutych/refs/heads/main/charts/summary_today.png" style="width:100%; border-radius:10px;"></div>
+    </div>
+
     <script>
         const DOC_ID = "2PACX-1vTDv155RMF-zxABtNBXm81ycd6eLswlpDqowPApt-ffwOn1q9J32hZucYSGvCMBDV0RpB1qfrRsHELs";
         const MAP_DATA_GID = "1910800617";
-        
-        // Твоє перевірене посилання
         const ICON_URL = "https://github.com/DesperadoAV/sandbox/blob/main/castle_blue.png?raw=true";
 
         const QUEUE_CONFIG = {
@@ -94,9 +102,9 @@
         let layers = {}, activeQueues = new Set(Object.keys(QUEUE_CONFIG)), sheetData = {}, markersStore = {};
         let nezlamnistLayer = L.layerGroup().addTo(map);
 
-        // Динамічний розмір маркерів при зміні зуму
-        function getIcon(color, zoom) {
-            let size = zoom <= 14 ? 18 : (zoom === 15 ? 26 : 38);
+        // Функція для іконок черг (краплі)
+        function getQueueIcon(color, zoom) {
+            let size = zoom <= 14 ? 12 : (zoom === 15 ? 24 : 34);
             return new L.Icon({
                 iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
                 shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
@@ -107,43 +115,25 @@
             });
         }
 
-        // --- ОНОВЛЕНА ФУНКЦІЯ СТВОРЕННЯ ІКОНКИ ДЛЯ ПУНКТІВ НЕЗЛАМНОСТІ ---
-        // Щоб картинка не перетворювалася на яйце, ми прибираємо примусові розміри 
-        // div-контейнера та дозволяємо картинці підлаштовуватися пропорційно.
+        // Функція для Пунктів Незламності (фортеця) - ТУТ ВИПРАВЛЕННЯ
         function getNezlamnistIcon(zoom) {
-            // Визначаємо розміри залежно від наближення мапи
-            let wrapperSize = zoom <= 14 ? 20 : (zoom === 15 ? 30 : 40); // Розмір контейнера
-            
-            return L.divIcon({
-                html: `<div style="
-                        width: ${wrapperSize}px; 
-                        height: ${wrapperSize}px; 
-                        background-color: transparent; /* Робимо контейнер прозорим */
-                        display: flex; 
-                        align-items: center; 
-                        justify-content: center;">
-                            <img src="${ICON_URL}" style="
-                                max-width: 100%; /* Обмежуємо ширину */
-                                max-height: 100%; /* Обмежуємо висоту */
-                                width: auto; /* Дозволяємо авто-підбір ширини */
-                                height: auto; /* Дозволяємо авто-підбір висоти */
-                                display: block;"/>
-                        </div>`,
-                className: '', // Прибираємо стандартні CSS-стилі Leaflet
-                iconSize: [wrapperSize, wrapperSize], // Задаємо загальний розмір контейнера
-                iconAnchor: [wrapperSize / 2, wrapperSize / 2], // Центруємо іконку по точці
-                popupAnchor: [0, -wrapperSize / 2] // Зміщуємо попап трішки вище
+            let s = zoom <= 14 ? 15 : (zoom === 15 ? 28 : 38);
+            return L.icon({
+                iconUrl: ICON_URL,
+                iconSize: [s, s],
+                iconAnchor: [s/2, s/2],
+                popupAnchor: [0, -s/2]
             });
         }
 
-        map.on('zoomend', function() {
+        // Оновлення при зумі
+        map.on('zoomend', () => {
             const z = map.getZoom();
             nezlamnistLayer.eachLayer(m => m.setIcon(getNezlamnistIcon(z)));
             for (let q in layers) {
                 layers[q].eachLayer(m => {
-                    const content = m.getPopup().getContent();
-                    const isLight = content.includes('💡');
-                    m.setIcon(getIcon(isLight ? QUEUE_CONFIG[q].icon : "grey", z));
+                    const isLight = m._lightStatus;
+                    m.setIcon(getQueueIcon(isLight ? QUEUE_CONFIG[q].icon : "grey", z));
                 });
             }
         });
@@ -152,6 +142,14 @@
             try {
                 const res = await fetch(`https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${MAP_DATA_GID}&t=${Date.now()}`);
                 const rows = (await res.text()).split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
+                let fHtml = "";
+                for (let i = 1; i <= 6; i++) {
+                    if (rows[i]) {
+                        const q = rows[i][0];
+                        fHtml += `<div class="forecast-row" style="background:${QUEUE_CONFIG[q]?.color || '#333'}"><span>Черга ${q}</span><span>${rows[i][2]||''} ${rows[i][3]||''}</span></div>`;
+                    }
+                }
+                document.getElementById('forecast-list').innerHTML = fHtml;
                 return rows;
             } catch(e) { return null; }
         }
@@ -161,8 +159,9 @@
             const z = map.getZoom();
             PUNKT_NEZLAMNOSTI.forEach((p, idx) => {
                 const row = globalRows ? globalRows[13 + idx] : null;
-                const info = row ? row[2] : "Пункт обігріву";
-                const content = `<div style="min-width:180px;"><b style="color:#3498db;">🏠 ${p.name}</b><br><div style="margin-top:8px; padding:8px; background:#e3f2fd; border-radius:8px; font-size:12px;">${info}</div></div>`;
+                const info = row ? row[2] : "Генератор, інтернет, тепло";
+                const time = row ? row[3] : "";
+                const content = `<div style="min-width:180px;"><b style="color:#228BE6;">🏠 ${p.name}</b><br><div style="margin-top:8px; padding:8px; background:#eef2f7; border-radius:8px; font-size:12px;">${info}<br><b>${time}</b></div></div>`;
                 L.marker([p.lat, p.lng], { icon: getNezlamnistIcon(z) }).bindPopup(content).addTo(nezlamnistLayer);
             });
         }
@@ -172,17 +171,40 @@
             try {
                 const res = await fetch(`https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${conf.gid}&t=${Date.now()}`);
                 const rows = (await res.text()).split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim()));
+                if (layers[q]) map.removeLayer(layers[q]);
                 layers[q] = L.layerGroup();
+                sheetData[q] = [];
                 const z = map.getZoom();
                 for (let i = 2; i < rows.length; i++) {
                     const r = rows[i]; if (!r[3]) continue;
                     const light = (r[5]?.toLowerCase() === 'y');
-                    L.marker([parseFloat(r[3].replace(',','.')), parseFloat(r[4].replace(',','.'))], { icon: getIcon(light ? conf.icon : "grey", z) })
-                     .bindPopup(`<b>${r[1]}</b><br>${light?'💡 Є світло':'🕯️ Немає світла'}`).addTo(layers[q]);
+                    const m = L.marker([parseFloat(r[3].replace(',','.')), parseFloat(r[4].replace(',','.'))], { icon: getQueueIcon(light ? conf.icon : "grey", z) });
+                    m._lightStatus = light;
+                    m.bindPopup(`<b>${r[1]}</b><br>${light?'💡 Світло є':'🕯️ Немає світла'}<br><small>Оновлено: ${r[8]||''}</small>`);
+                    m.addTo(layers[q]);
+                    sheetData[q].push(r[1]);
+                    if(!markersStore[q]) markersStore[q] = {};
+                    markersStore[q][r[1]] = m;
                 }
                 if (activeQueues.has(q)) layers[q].addTo(map);
             } catch(e) {}
         }
+
+        function renderMenu() {
+            let html = `<div class="q-item-container"><div class="q-header" onclick="toggleAccordion('nezlamnist')"><div class="q-eye"><img src="https://img.icons8.com/material-rounded/20/228BE6/visible.png"/></div><div class="q-color-box" style="background:#228BE6"></div><span class="q-name">Пункти Незламності</span></div><div class="address-list" id="list-nezlamnist" style="border-left: 5px solid #228BE6;">${PUNKT_NEZLAMNOSTI.map(p => `<div class="address-item">${p.name}</div>`).join('')}</div></div>`;
+            html += Object.keys(QUEUE_CONFIG).map(q => {
+                const isVisible = activeQueues.has(q);
+                return `<div class="q-item-container"><div class="q-header" onclick="toggleAccordion('${q}')"><div class="q-eye" onclick="event.stopPropagation(); toggleVis('${q}')"><img src="https://img.icons8.com/material-rounded/20/${isVisible?'228BE6':'999'}/${isVisible?'visible':'invisible'}.png"/></div><div class="q-color-box" style="background:${QUEUE_CONFIG[q].color}"></div><span class="q-name">Черга ${q}</span></div><div class="address-list" id="list-${q}" style="border-left: 5px solid ${QUEUE_CONFIG[q].color};">${(sheetData[q]||[]).map(a => `<div class="address-item" onclick="focusAddr('${q}','${a}')">${a}</div>`).join('')}</div></div>`;
+            }).join('');
+            document.getElementById('menu-list').innerHTML = html;
+        }
+
+        function focusAddr(q, a) { const m = markersStore[q][a]; if(m) { map.setView(m.getLatLng(), 18); m.openPopup(); document.getElementById('qMenu').style.display = 'none'; } }
+        function toggleVis(q) { if (activeQueues.has(q)) { activeQueues.delete(q); map.removeLayer(layers[q]); } else { activeQueues.add(q); layers[q].addTo(map); } renderMenu(); }
+        function toggleAccordion(q) { const el = document.getElementById(`list-${q}`); const isVisible = el.style.display === 'block'; document.querySelectorAll('.address-list').forEach(d => d.style.display = 'none'); el.style.display = isVisible ? 'none' : 'block'; }
+        function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display === 'flex')? 'none' : 'flex'; }
+        function toggleMenu() { const m = document.getElementById('qMenu'); m.style.display = (m.style.display === 'flex')? 'none' : 'flex'; }
+        function openInfo() { alert("Svitlo Slavutych - проект для моніторингу електропостачання."); }
 
         async function init() {
             const rows = await updateGlobals();
@@ -190,16 +212,8 @@
             for(let q in QUEUE_CONFIG) await fetchQueue(q);
             renderMenu();
         }
-        
-        function renderMenu() {
-            let html = `<div class="q-item-container"><div class="q-header" onclick="toggleAccordion('nezlamnist')"><div class="q-eye"><img src="https://img.icons8.com/material-rounded/20/228BE6/visible.png"/></div><div class="q-color-box" style="background:#3498db"></div><span class="q-name">Пункти Незламності</span></div><div class="address-list" id="list-nezlamnist" style="border-left: 5px solid #3498db;">${PUNKT_NEZLAMNOSTI.map(p => `<div class="address-item">${p.name}</div>`).join('')}</div></div>`;
-            document.getElementById('menu-list').innerHTML = html;
-        }
 
-        function toggleMenu() { const m = document.getElementById('qMenu'); m.style.display = (m.style.display === 'flex')? 'none' : 'flex'; }
-        function toggleAccordion(q) { const el = document.getElementById(`list-${q}`); el.style.display = (el.style.display === 'block') ? 'none' : 'block'; }
-
-        init();
+        init(); setInterval(init, 60000);
     </script>
 </body>
 </html>
