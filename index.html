@@ -53,6 +53,18 @@
         .back-btn { align-self: flex-start; background: none; border: none; color: #228BE6; font-weight: bold; cursor: pointer; padding: 5px; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
         
         .status-legend { background: #f0f7ff; padding: 10px; border-radius: 12px; margin-top: 10px; border: 1px dashed #228BE6; }
+        /* Прибираємо будь-які фони та тіні для всіх іконок */
+.leaflet-marker-icon {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+/* Гарантуємо, що самі картинки іконок не мають фону */
+.leaflet-marker-icon img {
+    background: transparent !important;
+    background-color: transparent !important;
+}
     </style>
 </head>
 <body>
