@@ -29,16 +29,18 @@
 
         .q-menu { position: absolute; left: 75px; top: 15px; width: 280px; max-height: 85vh; background: white; border-radius: 16px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
         #menu-list { overflow-y: auto; flex: 1; }
-        .q-header { display: flex; align-items: center; padding: 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; transition: background 0.2s; }
-        .q-header:hover { background: #f8f9fa; }
+        .q-header { display: flex; align-items: center; padding: 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; }
         .q-color-box { width: 12px; height: 12px; border-radius: 3px; margin-right: 10px; }
-        .address-list { display: none; background: #f9f9f9; border-left: 4px solid #eee; }
-        .address-item { padding: 10px 15px 10px 20px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; color: #555; }
+        
+        /* Той самий список з лінією збоку */
+        .address-list { display: none; background: #f9f9f9; }
+        .address-item { padding: 10px 15px 10px 25px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; color: #555; position: relative; }
         .address-item:hover { background: #eef2f7; color: #228BE6; }
 
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2100; display: none; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box; }
         .modal-content { background: white; border-radius: 24px; padding: 25px; width: 100%; max-width: 400px; max-height: 85vh; overflow-y: auto; position: relative; }
-        .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; color: #999; }
+        .social-links { display: flex; justify-content: space-around; margin-top: 20px; }
+        .social-links a { text-decoration: none; font-size: 24px; }
     </style>
 </head>
 <body>
@@ -63,18 +65,18 @@
 
     <div class="modal" id="infoModal" onclick="toggleModal('infoModal')">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="close-modal" onclick="toggleModal('infoModal')">&times;</span>
-            <h3 style="color:#228BE6">Svitlo Slavutych</h3>
+            <h3 style="color:#228BE6; margin-top:0;">Svitlo Slavutych</h3>
             <p>Цей проект допомагає мешканцям міста Славутич відстежувати стан електропостачання в режимі реального часу.</p>
             <p>Дані оновлюються автоматично з офіційних джерел та звітів користувачів.</p>
-            <hr>
-            <small style="color:#888">Розробка: DesperadoAV</small>
+            <div class="social-links">
+                <a href="https://t.me/p_slavutych" target="_blank" title="Telegram">🔹 TG</a>
+                <a href="https://invite.viber.com/?g2=AQB0WPljT%2B6Y6U6Y6U6Y6U6Y6U6Y6U6Y" target="_blank" title="Viber">💜 VB</a>
+            </div>
         </div>
     </div>
 
     <div class="modal" id="forecastModal" onclick="toggleModal('forecastModal')">
         <div class="modal-content" onclick="event.stopPropagation()">
-            <span class="close-modal" onclick="toggleModal('forecastModal')">&times;</span>
             <h3>Графік черг</h3>
             <div id="forecast-list"></div>
         </div>
@@ -82,7 +84,6 @@
 
     <div class="modal" id="graphModal" onclick="toggleModal('graphModal')">
         <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
-            <span class="close-modal" onclick="toggleModal('graphModal')">&times;</span>
             <img src="https://raw.githubusercontent.com/amvasylets/Svitlo_in_Slavutych/refs/heads/main/charts/summary_today.png" style="width:100%; border-radius:10px;">
         </div>
     </div>
@@ -150,13 +151,11 @@
                 const res = await fetch(`https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${MAP_DATA_GID}&t=${Date.now()}`);
                 const rows = (await res.text()).split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
 
-                // Повідомлення C10
                 const alertText = rows[9]?.[2];
                 const alertEl = document.getElementById('top-alert');
                 if(alertText && alertText.trim() !== "") { alertEl.innerText = alertText; alertEl.style.display = 'block'; }
                 else { alertEl.style.display = 'none'; }
 
-                // Прогноз
                 let fHtml = "";
                 for (let i = 1; i <= 6; i++) {
                     const r = rows[i];
@@ -164,7 +163,6 @@
                 }
                 document.getElementById('forecast-list').innerHTML = fHtml;
 
-                // Пункти Незламності
                 nezlamnistLayer.clearLayers();
                 PUNKT_NEZLAMNOSTI.forEach((p, i) => {
                     const r = rows[13 + i];
@@ -172,10 +170,9 @@
                     L.marker([p.lat, p.lng], { icon: getNezIcon(map.getZoom()) }).bindPopup(popup).addTo(nezlamnistLayer);
                 });
 
-                // Черги
                 for(let q in QUEUE_CONFIG) await fetchQueue(q);
                 renderMenu();
-            } catch(e) { console.error("Update error", e); }
+            } catch(e) {}
         }
 
         async function fetchQueue(q) {
@@ -200,9 +197,10 @@
         }
 
         function renderMenu() {
-            let html = `<div class="q-header" onclick="toggleAccordion('nez')"><div class="q-color-box" style="background:#3498db"></div><b>Пункти Незламності</b></div><div class="address-list" id="list-nez">${PUNKT_NEZLAMNOSTI.map(p => `<div class="address-item" onclick="focusNez('${p.lat}','${p.lng}')">${p.name}</div>`).join('')}</div>`;
+            let html = `<div class="q-header" onclick="toggleAccordion('nez')"><div class="q-color-box" style="background:#3498db"></div><b>Пункти Незламності</b></div><div class="address-list" id="list-nez">${PUNKT_NEZLAMNOSTI.map(p => `<div class="address-item" style="border-left: 4px solid #3498db" onclick="focusNez('${p.lat}','${p.lng}')">${p.name}</div>`).join('')}</div>`;
             for(let q in QUEUE_CONFIG) {
-                html += `<div class="q-header" onclick="toggleAccordion('${q}')"><div class="q-color-box" style="background:${QUEUE_CONFIG[q].color}"></div><b>Черга ${q}</b></div><div class="address-list" id="list-${q}">${(sheetData[q]||[]).map(a => `<div class="address-item" onclick="focusAddr('${q}','${a}')">${a}</div>`).join('')}</div>`;
+                const col = QUEUE_CONFIG[q].color;
+                html += `<div class="q-header" onclick="toggleAccordion('${q}')"><div class="q-color-box" style="background:${col}"></div><b>Черга ${q}</b></div><div class="address-list" id="list-${q}">${(sheetData[q]||[]).map(a => `<div class="address-item" style="border-left: 4px solid ${col}" onclick="focusAddr('${q}','${a}')">${a}</div>`).join('')}</div>`;
             }
             document.getElementById('menu-list').innerHTML = html;
         }
