@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
@@ -53,18 +53,6 @@
         .back-btn { align-self: flex-start; background: none; border: none; color: #228BE6; font-weight: bold; cursor: pointer; padding: 5px; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
         
         .status-legend { background: #f0f7ff; padding: 10px; border-radius: 12px; margin-top: 10px; border: 1px dashed #228BE6; }
-        /* Прибираємо будь-які фони та тіні для всіх іконок */
-.leaflet-marker-icon {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-}
-
-/* Гарантуємо, що самі картинки іконок не мають фону */
-.leaflet-marker-icon img {
-    background: transparent !important;
-    background-color: transparent !important;
-}
     </style>
 </head>
 <body>
@@ -163,8 +151,8 @@
         const QUEUE_CONFIG = {
             "1.1": { gid: "0", color: "#ff0000", icon: "red" },
             "2.1": { gid: "1407012161", color: "#3498db", icon: "blue" },
-            "3.1": { gid: "774761347", color: "#9900ff", icon: "purple" },
-            "3.2": { gid: "1047238720", color: "#ffcc00", icon: "yellow" },
+            "3.1": { gid: "774761347", color: "#9900ff", icon: "violet" },
+            "3.2": { gid: "1047238720", color: "#ffcc00", icon: "gold" },
             "4.1": { gid: "877384835", color: "#ff9900", icon: "orange" },
             "6.1": { gid: "1811736051", color: "#009933", icon: "green" }
         };
@@ -201,65 +189,14 @@
             });
         }
 
-        function getQueueIcon(queue, isLight, zoom) {
-    // Визначаємо розмір залежно від зуму
-    let s = zoom <= 14 ? 20 : (zoom === 15 ? 30 : 40);
-    
-    // Якщо світла немає — завжди сіра лампочка
-    let iconUrl = 'bulb_off.png';
-    
-    // Якщо світло є — вибираємо лампочку за номером черги
-    if (isLight) {
-        const icons = {
-            '1.1': 'bulb_1_1.png',
-            '2.1': 'bulb_2_1.png',
-            '3.1': 'bulb_3_1.png',
-            '3.2': 'bulb_3_2.png',
-            '4.1': 'bulb_4_1.png',
-            '6.1': 'bulb_6_1.png'
-        };
-        iconUrl = icons[queue] || 'bulb_off.png';
-    }
-
-    return L.icon({
-        iconUrl: iconUrl,
-        iconSize: [s, s],
-        iconAnchor: [s/2, s/2],
-        popupAnchor: [0, -s/2]
-    });
-}
-
-       function getQIcon(iconName, zoom) {
-    // Визначаємо розмір (трохи збільшив для кращої видимості)
-    let s = zoom <= 14 ? 22 : (zoom === 15 ? 32 : 44);
-
-    const iconFiles = {
-        "red": "bulb_1_1.png",
-        "blue": "bulb_2_1.png",
-        "purple": "bulb_3_1.png",
-        "yellow": "bulb_3_2.png",
-        "orange": "bulb_4_1.png",
-        "green": "bulb_6_1.png",
-        "grey": "bulb_off.png"
-    };
-
-    // Використовуємо divIcon, щоб контролювати контейнер
-    return L.divIcon({
-        className: '', // Прибираємо стандартні стилі Leaflet
-        html: `<div style="
-                    width: ${s}px; 
-                    height: ${s}px; 
-                    display: flex; 
-                    align-items: center; 
-                    justify-content: center;">
-                <img src="${iconFiles[iconName] || "bulb_off.png"}" 
-                     style="width: 100%; height: 100%; object-fit: contain;">
-               </div>`,
-        iconSize: [s, s],
-        iconAnchor: [s/2, s/2],
-        popupAnchor: [0, -s/2]
-    });
-}
+        function getQIcon(color, zoom) {
+            let size = zoom <= 14 ? 12 : (zoom === 15 ? 24 : 32);
+            return new L.Icon({
+                iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [size * 0.6, size], iconAnchor: [size * 0.3, size], shadowSize: [size, size]
+            });
+        }
 
         map.on('zoomend', () => {
             const z = map.getZoom();
