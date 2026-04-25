@@ -75,12 +75,12 @@
                 <div onclick="showScreen('main')" style="cursor:pointer; color:#228BE6; font-weight:bold; margin-bottom:10px;">← Назад</div>
                 <h4 style="margin:0;">Про систему</h4>
                 <p style="font-size: 14px; line-height: 1.5; color: #444;">
-                    Проект для моніторингу світла та допомоги у м. Славутич.
+                    Проект для моніторингу світла та пошуку допомоги у м. Славутич.
                     <br><br>
                     <b>Позначення:</b><br>
                     • <b>Кольоровий маркер</b> — світло є.<br>
                     • <b>Сірий маркер</b> — світла немає.<br>
-                    • <b>Золотий маркер</b> — Пункт Незламності.<br>
+                    • <b>Блакитний маркер (Фортеця)</b> — Пункт Незламності.<br>
                 </p>
             </div>
             <div id="screen-tg" class="modal-screen">
@@ -122,21 +122,26 @@
         };
 
         const PUNKT_NEZLAMNOSTI = [
-            { name: "Загальноміський бібліотечно-інформаційний центр", lat: 51.5235, lng: 30.7581 },
-            { name: "ЗДО №1 \"Калинка\"", lat: 51.5258, lng: 30.7485 },
-            { name: "ЗДО №6 \"Крунк\"", lat: 51.5192, lng: 30.7512 },
-            { name: "Кіноконцертний комплекс", lat: 51.5226, lng: 30.7570 },
-            { name: "КП \"ЖКЦ\"", lat: 51.5242, lng: 30.7615 },
-            { name: "Ліцей \"БезМеж\" (школа 4)", lat: 51.5275, lng: 30.7630 },
-            { name: "Молодіжний Простір", lat: 51.5218, lng: 30.7592 },
-            { name: "Пожежна частина", lat: 51.5205, lng: 30.7685 },
-            { name: "Школа 1", lat: 51.5230, lng: 30.7535 },
-            { name: "Школа 2", lat: 51.5175, lng: 30.7555 },
-            { name: "Школа 3", lat: 51.5210, lng: 30.7645 }
+            { name: "Загальноміський бібліотечно-інформаційний центр", lat: 51.523402, lng: 30.761510 },
+            { name: "ЗДО №1 \"Калинка\"", lat: 51.525300, lng: 30.761493 },
+            { name: "ЗДО №6 \"Крунк\"", lat: 51.516414, lng: 30.760005 },
+            { name: "Кіноконцертний комплекс", lat: 51.522346, lng: 30.753734 },
+            { name: "КП \"ЖКЦ\"", lat: 51.517618, lng: 30.750250 },
+            { name: "Ліцей \"БезМеж\" (школа 4)", lat: 51.522895, lng: 30.766611 },
+            { name: "Молодіжний Простір", lat: 51.521670, lng: 30.757146 },
+            { name: "Пожежна частина", lat: 51.522111, lng: 30.744022 },
+            { name: "Школа 1", lat: 51.525253, lng: 30.756295 },
+            { name: "Школа 2", lat: 51.521059, lng: 30.750268 },
+            { name: "Школа 3", lat: 51.517586, lng: 30.754901 }
         ];
 
+        const nezlamnistIcon = L.divIcon({
+            html: `<div style="width:32px; height:32px; background-color:white; border:3px solid #3498db; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 2px 5px rgba(0,0,0,0.3);"><img src="https://img.icons8.com/material-rounded/20/3498db/castle.png" style="width:20px; height:20px;"/></div>`,
+            className: '', iconSize: [38, 38], iconAnchor: [19, 19], popupAnchor: [0, -20]
+        });
+
         const slavutychBounds = L.latLngBounds(L.latLng(51.505, 30.730), L.latLng(51.545, 30.790));
-        const map = L.map('map', { zoomControl: false, maxBounds: slavutychBounds, maxBoundsViscosity: 1.0 }).setView([51.5229, 30.7598], 15);
+        let map = L.map('map', { zoomControl: false, maxBounds: slavutychBounds, maxBoundsViscosity: 1.0 }).setView([51.5229, 30.7598], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { minZoom: 14, maxZoom: 19 }).addTo(map);
 
         let layers = {}, activeQueues = new Set(Object.keys(QUEUE_CONFIG)), sheetData = {}, markersStore = {};
@@ -152,7 +157,7 @@
                 for (let i = 1; i <= 6; i++) {
                     if (rows[i]) {
                         const q = rows[i][0];
-                        fHtml += `<div class="forecast-row" style="background:${QUEUE_CONFIG[q]?.color || '#333'}"><span>Черга ${q}</span><span>${rows[i][2]} ${rows[i][3]}</span></div>`;
+                        fHtml += `<div class="forecast-row" style="background:${QUEUE_CONFIG[q]?.color || '#333'}"><span>Черга ${q}</span><span>${rows[i][2]||''} ${rows[i][3]||''}</span></div>`;
                     }
                 }
                 document.getElementById('forecast-list').innerHTML = fHtml;
@@ -164,12 +169,12 @@
             nezlamnistLayer.clearLayers();
             markersStore["nezlamnist"] = {};
             PUNKT_NEZLAMNOSTI.forEach((p, idx) => {
-                const tableRow = globalRows ? globalRows[13 + idx] : null; // Дані з 14 рядка
-                const info = tableRow ? tableRow[2] : "Генератор, чай, зарядка";
+                const tableRow = globalRows ? globalRows[13 + idx] : null; 
+                const info = tableRow ? tableRow[2] : "Генератор, чай, обігрів";
                 const schedule = tableRow ? tableRow[3] : "";
 
-                const content = `<div style="min-width:180px;"><b style="color:#D4AF37;">🏠 ${p.name}</b><br><div style="margin-top:8px; padding:8px; background:#fff9e6; border:1px solid #ffe4b3; border-radius:8px; font-size:12px;">${info}${schedule ? '<br><b>Графік:</b> '+schedule : ''}</div></div>`;
-                const m = L.marker([p.lat, p.lng], { icon: getIcon("gold") }).bindPopup(content);
+                const content = `<div style="min-width:200px;"><b style="color:#3498db; font-size:15px;">🏠 ${p.name}</b><br><div style="margin-top:8px; padding:10px; background:#e3f2fd; border:1px solid #90caf9; border-radius:10px; font-size:13px;">${info}${schedule ? '<br><hr style="border:0; border-top:1px solid #90caf9; margin:6px 0;"><b>Графік:</b> '+schedule : ''}</div></div>`;
+                const m = L.marker([p.lat, p.lng], { icon: nezlamnistIcon }).bindPopup(content);
                 m.addTo(nezlamnistLayer);
                 markersStore["nezlamnist"][p.name] = m;
             });
@@ -187,7 +192,7 @@
                     const r = rows[i]; if (!r[3]) continue;
                     const lat = parseFloat(r[3].replace(',','.')), lng = parseFloat(r[4].replace(',','.')), light = (r[5]?.toLowerCase() === 'y');
                     let statusHTML = light ? `💡 <b>Світло є з ${r[8]||''}</b>` : `🕯️ <b>Світла немає з ${r[8]||''}</b>`;
-                    if (!light) statusHTML += `<div style="margin-top:5px; font-size:12px; border-top:1px solid #eee; padding-top:4px;">${r[10] && r[11] ? 'За графіком має з’явитися о: <b>'+r[11]+'</b>' : 'Час появи невідомий'}</div>`;
+                    if (!light) statusHTML += `<div style="margin-top:5px; font-size:12px; border-top:1px solid #eee; padding-top:4px;">За графіком має з’явитися о: <b>${r[11]||'невідомо'}</b></div>`;
                     else if (r[10]?.includes("Вимкнення")) statusHTML += `<div style="margin-top:5px; font-size:12px; border-top:1px solid #eee; padding-top:4px;">За графіком відключення о: <b>${r[11]||''}</b></div>`;
                     
                     const m = L.marker([lat, lng], { icon: getIcon(light ? conf.icon : "grey") }).bindPopup(`<div style="min-width:200px;"><b>${r[1]}</b><br><span style="font-size:11px; color:#666;">${r[2]||''}</span><div style="margin-top:8px; padding:8px; border-radius:8px; background:${light?'#f0fff4':'#fff5f5'}; border:1px solid ${light?'#c6f6d5':'#fed7d7'};">${statusHTML}</div></div>`);
@@ -198,7 +203,7 @@
         }
 
         function renderMenu() {
-            let html = `<div class="q-item-container"><div class="q-header" onclick="toggleAccordion('nezlamnist')"><div class="q-eye"><img src="https://img.icons8.com/material-rounded/20/228BE6/visible.png"/></div><div class="q-color-box" style="background:#D4AF37"></div><span class="q-name">Пункти Незламності</span></div><div class="address-list" id="list-nezlamnist" style="border-left: 5px solid #D4AF37;">${PUNKT_NEZLAMNOSTI.map(p => `<div class="address-item" onclick="focusAddr('nezlamnist','${p.name}')">${p.name}</div>`).join('')}</div></div>`;
+            let html = `<div class="q-item-container"><div class="q-header" onclick="toggleAccordion('nezlamnist')"><div class="q-eye"><img src="https://img.icons8.com/material-rounded/20/228BE6/visible.png"/></div><div class="q-color-box" style="background:#3498db"></div><span class="q-name">Пункти Незламності (11)</span></div><div class="address-list" id="list-nezlamnist" style="border-left: 5px solid #3498db;">${PUNKT_NEZLAMNOSTI.map(p => `<div class="address-item" onclick="focusAddr('nezlamnist','${p.name}')">${p.name}</div>`).join('')}</div></div>`;
             html += Object.keys(QUEUE_CONFIG).map(q => {
                 const isVisible = activeQueues.has(q);
                 return `<div class="q-item-container"><div class="q-header" onclick="toggleAccordion('${q}')"><div class="q-eye" onclick="event.stopPropagation(); toggleVis('${q}')"><img src="https://img.icons8.com/material-rounded/20/${isVisible?'228BE6':'999'}/${isVisible?'visible':'invisible'}.png"/></div><div class="q-color-box" style="background:${QUEUE_CONFIG[q].color}"></div><span class="q-name">Черга ${q}</span></div><div class="address-list" id="list-${q}" style="border-left: 5px solid ${QUEUE_CONFIG[q].color};">${(sheetData[q]||[]).map(a => `<div class="address-item" onclick="focusAddr('${q}','${a}')">${a}</div>`).join('')}</div></div>`;
