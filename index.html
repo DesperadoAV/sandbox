@@ -45,7 +45,7 @@
         
         .close-x { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #ccc; cursor: pointer; border: none; background: none; z-index: 10; }
         .modal-title { color: #228BE6; font-size: 22px; font-weight: bold; margin-bottom: 15px; }
-        .modal-text { font-size: 14px; color: #333; line-height: 1.4; margin-bottom: 12px; text-align: left; }
+        .modal-text { font-size: 14px; color: #333 !important; line-height: 1.4; margin-bottom: 12px; text-align: left; }
         
         .nav-btn { display: flex; align-items: center; gap: 12px; padding: 14px; margin: 8px 0; background: #f8f9fa; border-radius: 15px; text-decoration: none; color: #333; font-weight: bold; cursor: pointer; border: 1px solid #eee; }
         .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; text-decoration: none; color: #333; font-size: 14px; width: 100%; box-sizing: border-box; }
@@ -286,7 +286,7 @@
             const m = document.getElementById(id); 
             const isVisible = m.style.display === 'flex';
             m.style.display = isVisible ? 'none' : 'flex'; 
-            if(!isVisible && id === 'infoModal') showPage('page-main'); 
+            if(!isVisible && id === 'infoModal') showPage('page-main');
         }
 
         function showPage(pageId) {
