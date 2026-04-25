@@ -59,7 +59,7 @@
     </div>
 
     <div class="q-menu" id="qMenu">
-        <div style="padding:15px; font-weight:bold; text-align:center; border-bottom:1px solid #eee;">Черги Славутича</div>
+        <div style="padding:15px; font-weight:bold; text-align:center; border-bottom:1px solid #eee;">Об'єкти міста</div>
         <div id="menu-list"></div>
     </div>
 
@@ -71,22 +71,18 @@
                 <div class="btn-link" onclick="showScreen('vb')" style="margin-top:10px;"><img src="https://img.icons8.com/color/28/viber.png" style="margin-right:10px"/> Viber Канали</div>
                 <div class="btn-link" onclick="showScreen('about')" style="margin-top:10px; background:#eef2f7;"><img src="https://img.icons8.com/ios-filled/28/228BE6/help.png" style="margin-right:10px"/> Про проект</div>
             </div>
-
             <div id="screen-about" class="modal-screen">
                 <div onclick="showScreen('main')" style="cursor:pointer; color:#228BE6; font-weight:bold; margin-bottom:10px;">← Назад</div>
                 <h4 style="margin:0;">Про систему</h4>
                 <p style="font-size: 14px; line-height: 1.5; color: #444;">
-                    Проект створений для зручного моніторингу наявності світла у м. Славутич.
+                    Проект для моніторингу світла та допомоги у м. Славутич.
                     <br><br>
-                    <b>Як користуватися:</b><br>
-                    • Виберіть свою чергу в меню зліва.<br>
-                    • Тисніть на будинок, щоб побачити статус.<br>
+                    <b>Позначення:</b><br>
                     • <b>Кольоровий маркер</b> — світло є.<br>
                     • <b>Сірий маркер</b> — світла немає.<br>
-                    • Дані оновлюються автоматично згідно з офіційними графіками.
+                    • <b>Золотий маркер</b> — Пункт Незламності.<br>
                 </p>
             </div>
-
             <div id="screen-tg" class="modal-screen">
                 <div onclick="showScreen('main')" style="cursor:pointer; color:#228BE6; font-weight:bold; margin-bottom:10px;">← Назад</div>
                 <div id="tg-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;"></div>
@@ -101,16 +97,10 @@
     </div>
 
     <div class="modal" id="forecastModal" onclick="toggleModal('forecastModal')">
-        <div class="modal-content" onclick="event.stopPropagation()">
-            <h3 style="margin-top:0">Майбутні події</h3>
-            <div id="forecast-list"></div>
-        </div>
+        <div class="modal-content" onclick="event.stopPropagation()"><h3 style="margin-top:0">Майбутні події</h3><div id="forecast-list"></div></div>
     </div>
-
     <div class="modal" id="graphModal" onclick="toggleModal('graphModal')">
-        <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()">
-            <img src="https://raw.githubusercontent.com/amvasylets/Svitlo_in_Slavutych/refs/heads/main/charts/summary_today.png" style="width:100%; border-radius:10px;">
-        </div>
+        <div class="modal-content" style="max-width: 500px;" onclick="event.stopPropagation()"><img src="https://raw.githubusercontent.com/amvasylets/Svitlo_in_Slavutych/refs/heads/main/charts/summary_today.png" style="width:100%; border-radius:10px;"></div>
     </div>
 
     <script>
@@ -131,11 +121,26 @@
             "6.1": { gid: "1811736051", color: "#009933", icon: "green" }
         };
 
+        const PUNKT_NEZLAMNOSTI = [
+            { name: "Загальноміський бібліотечно-інформаційний центр", lat: 51.5235, lng: 30.7581 },
+            { name: "ЗДО №1 \"Калинка\"", lat: 51.5258, lng: 30.7485 },
+            { name: "ЗДО №6 \"Крунк\"", lat: 51.5192, lng: 30.7512 },
+            { name: "Кіноконцертний комплекс", lat: 51.5226, lng: 30.7570 },
+            { name: "КП \"ЖКЦ\"", lat: 51.5242, lng: 30.7615 },
+            { name: "Ліцей \"БезМеж\" (школа 4)", lat: 51.5275, lng: 30.7630 },
+            { name: "Молодіжний Простір", lat: 51.5218, lng: 30.7592 },
+            { name: "Пожежна частина", lat: 51.5205, lng: 30.7685 },
+            { name: "Школа 1", lat: 51.5230, lng: 30.7535 },
+            { name: "Школа 2", lat: 51.5175, lng: 30.7555 },
+            { name: "Школа 3", lat: 51.5210, lng: 30.7645 }
+        ];
+
         const slavutychBounds = L.latLngBounds(L.latLng(51.505, 30.730), L.latLng(51.545, 30.790));
         const map = L.map('map', { zoomControl: false, maxBounds: slavutychBounds, maxBoundsViscosity: 1.0 }).setView([51.5229, 30.7598], 15);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { minZoom: 14, maxZoom: 19 }).addTo(map);
 
         let layers = {}, activeQueues = new Set(Object.keys(QUEUE_CONFIG)), sheetData = {}, markersStore = {};
+        let nezlamnistLayer = L.layerGroup().addTo(map);
 
         function getIcon(color) { return new L.Icon({ iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`, shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41] }); }
 
@@ -151,7 +156,23 @@
                     }
                 }
                 document.getElementById('forecast-list').innerHTML = fHtml;
-            } catch(e) {}
+                return rows;
+            } catch(e) { return null; }
+        }
+
+        function setupNezlamnist(globalRows) {
+            nezlamnistLayer.clearLayers();
+            markersStore["nezlamnist"] = {};
+            PUNKT_NEZLAMNOSTI.forEach((p, idx) => {
+                const tableRow = globalRows ? globalRows[13 + idx] : null; // Дані з 14 рядка
+                const info = tableRow ? tableRow[2] : "Генератор, чай, зарядка";
+                const schedule = tableRow ? tableRow[3] : "";
+
+                const content = `<div style="min-width:180px;"><b style="color:#D4AF37;">🏠 ${p.name}</b><br><div style="margin-top:8px; padding:8px; background:#fff9e6; border:1px solid #ffe4b3; border-radius:8px; font-size:12px;">${info}${schedule ? '<br><b>Графік:</b> '+schedule : ''}</div></div>`;
+                const m = L.marker([p.lat, p.lng], { icon: getIcon("gold") }).bindPopup(content);
+                m.addTo(nezlamnistLayer);
+                markersStore["nezlamnist"][p.name] = m;
+            });
         }
 
         async function fetchQueue(q) {
@@ -162,41 +183,14 @@
                 if (layers[q]) map.removeLayer(layers[q]);
                 layers[q] = L.layerGroup();
                 sheetData[q] = []; markersStore[q] = {};
-
                 for (let i = 2; i < rows.length; i++) {
                     const r = rows[i]; if (!r[3]) continue;
-                    const lat = parseFloat(r[3].replace(',','.')), lng = parseFloat(r[4].replace(',','.'));
-                    const light = (r[5]?.toLowerCase() === 'y');
+                    const lat = parseFloat(r[3].replace(',','.')), lng = parseFloat(r[4].replace(',','.')), light = (r[5]?.toLowerCase() === 'y');
+                    let statusHTML = light ? `💡 <b>Світло є з ${r[8]||''}</b>` : `🕯️ <b>Світла немає з ${r[8]||''}</b>`;
+                    if (!light) statusHTML += `<div style="margin-top:5px; font-size:12px; border-top:1px solid #eee; padding-top:4px;">${r[10] && r[11] ? 'За графіком має з’явитися о: <b>'+r[11]+'</b>' : 'Час появи невідомий'}</div>`;
+                    else if (r[10]?.includes("Вимкнення")) statusHTML += `<div style="margin-top:5px; font-size:12px; border-top:1px solid #eee; padding-top:4px;">За графіком відключення о: <b>${r[11]||''}</b></div>`;
                     
-                    // r[1]: Адреса, r[2]: Опис, r[7]: Статус, r[8]: Час, r[10]: Прогноз, r[11]: Час прогнозу
-                    const timeNow = r[8] || "";
-                    const futureStatus = r[10] || "";
-                    const futureTime = r[11] || "";
-
-                    let statusHTML = "";
-                    if (light) {
-                        statusHTML = `<b style="color:#2f855a;">💡 Світло є з ${timeNow}</b>`;
-                        if (futureStatus && futureStatus.includes("Вимкнення")) {
-                            statusHTML += `<div style="margin-top:5px; font-size:12px; border-top:1px solid #eee; padding-top:4px;">📉 За графіком відключення о: <b>${futureTime}</b></div>`;
-                        }
-                    } else {
-                        statusHTML = `<b style="color:#c53030;">🕯️ Світла немає з ${timeNow}</b>`;
-                        if (futureStatus && futureTime) {
-                            statusHTML += `<div style="margin-top:5px; font-size:12px; border-top:1px solid #eee; padding-top:4px;">📈 За графіком має з’явитися о: <b>${futureTime}</b></div>`;
-                        } else {
-                            statusHTML += `<div style="margin-top:5px; font-size:12px; border-top:1px solid #eee; padding-top:4px;">Час появи невідомий</div>`;
-                        }
-                    }
-
-                    const content = `<div style="min-width:200px;">
-                        <b style="font-size:14px;">${r[1]}</b><br>
-                        ${r[2] ? `<span style="font-size:11px; color:#666;">${r[2]}</span><br>` : ''}
-                        <div style="margin-top:8px; padding:8px; border-radius:8px; background:${light?'#f0fff4':'#fff5f5'}; border:1px solid ${light?'#c6f6d5':'#fed7d7'};">
-                            ${statusHTML}
-                        </div>
-                    </div>`;
-
-                    const m = L.marker([lat, lng], { icon: getIcon(light ? conf.icon : "grey") }).bindPopup(content);
+                    const m = L.marker([lat, lng], { icon: getIcon(light ? conf.icon : "grey") }).bindPopup(`<div style="min-width:200px;"><b>${r[1]}</b><br><span style="font-size:11px; color:#666;">${r[2]||''}</span><div style="margin-top:8px; padding:8px; border-radius:8px; background:${light?'#f0fff4':'#fff5f5'}; border:1px solid ${light?'#c6f6d5':'#fed7d7'};">${statusHTML}</div></div>`);
                     m.addTo(layers[q]); markersStore[q][r[1]] = m; sheetData[q].push(r[1]);
                 }
                 if (activeQueues.has(q)) layers[q].addTo(map);
@@ -204,47 +198,18 @@
         }
 
         function renderMenu() {
-            document.getElementById('menu-list').innerHTML = Object.keys(QUEUE_CONFIG).map(q => {
+            let html = `<div class="q-item-container"><div class="q-header" onclick="toggleAccordion('nezlamnist')"><div class="q-eye"><img src="https://img.icons8.com/material-rounded/20/228BE6/visible.png"/></div><div class="q-color-box" style="background:#D4AF37"></div><span class="q-name">Пункти Незламності</span></div><div class="address-list" id="list-nezlamnist" style="border-left: 5px solid #D4AF37;">${PUNKT_NEZLAMNOSTI.map(p => `<div class="address-item" onclick="focusAddr('nezlamnist','${p.name}')">${p.name}</div>`).join('')}</div></div>`;
+            html += Object.keys(QUEUE_CONFIG).map(q => {
                 const isVisible = activeQueues.has(q);
-                return `
-                <div class="q-item-container">
-                    <div class="q-header" onclick="toggleAccordion('${q}')">
-                        <div class="q-eye" onclick="event.stopPropagation(); toggleVis('${q}')"><img src="https://img.icons8.com/material-rounded/20/${isVisible?'228BE6':'999'}/${isVisible?'visible':'invisible'}.png"/></div>
-                        <div class="q-color-box" style="background:${QUEUE_CONFIG[q].color}"></div>
-                        <span class="q-name">Черга ${q}</span>
-                    </div>
-                    <div class="address-list" id="list-${q}" style="border-left: 5px solid ${QUEUE_CONFIG[q].color};">
-                        ${(sheetData[q]||[]).map(a => `<div class="address-item" onclick="focusAddr('${q}','${a}')">${a}</div>`).join('')}
-                    </div>
-                </div>`;
+                return `<div class="q-item-container"><div class="q-header" onclick="toggleAccordion('${q}')"><div class="q-eye" onclick="event.stopPropagation(); toggleVis('${q}')"><img src="https://img.icons8.com/material-rounded/20/${isVisible?'228BE6':'999'}/${isVisible?'visible':'invisible'}.png"/></div><div class="q-color-box" style="background:${QUEUE_CONFIG[q].color}"></div><span class="q-name">Черга ${q}</span></div><div class="address-list" id="list-${q}" style="border-left: 5px solid ${QUEUE_CONFIG[q].color};">${(sheetData[q]||[]).map(a => `<div class="address-item" onclick="focusAddr('${q}','${a}')">${a}</div>`).join('')}</div></div>`;
             }).join('');
+            document.getElementById('menu-list').innerHTML = html;
         }
 
-        function focusAddr(q, a) { 
-            const m = markersStore[q][a]; 
-            if(m) { map.setView(m.getLatLng(), 18); m.openPopup(); document.getElementById('qMenu').style.display = 'none'; } 
-        }
-
-        function toggleVis(q) {
-            if (activeQueues.has(q)) { activeQueues.delete(q); map.removeLayer(layers[q]); }
-            else { activeQueues.add(q); layers[q].addTo(map); }
-            renderMenu();
-        }
-
-        function toggleAccordion(q) {
-            const el = document.getElementById(`list-${q}`);
-            const isVisible = el.style.display === 'block';
-            document.querySelectorAll('.address-list').forEach(d => d.style.display = 'none');
-            el.style.display = isVisible ? 'none' : 'block';
-        }
-
-        function openInfo() {
-            const qs = Object.keys(QUEUE_CONFIG);
-            document.getElementById('tg-grid').innerHTML = qs.map(q => `<a href="${LINKS.tg[q]}" target="_blank" class="grid-item" style="background:${QUEUE_CONFIG[q].color}">${q}</a>`).join('');
-            document.getElementById('vb-grid').innerHTML = qs.map(q => `<a href="${LINKS.vb[q]}" target="_blank" class="grid-item" style="background:${QUEUE_CONFIG[q].color}">${q}</a>`).join('');
-            showScreen('main'); toggleModal('infoModal');
-        }
-
+        function focusAddr(q, a) { const m = markersStore[q][a]; if(m) { map.setView(m.getLatLng(), 18); m.openPopup(); document.getElementById('qMenu').style.display = 'none'; } }
+        function toggleVis(q) { if (activeQueues.has(q)) { activeQueues.delete(q); map.removeLayer(layers[q]); } else { activeQueues.add(q); layers[q].addTo(map); } renderMenu(); }
+        function toggleAccordion(q) { const el = document.getElementById(`list-${q}`); const isVisible = el.style.display === 'block'; document.querySelectorAll('.address-list').forEach(d => d.style.display = 'none'); el.style.display = isVisible ? 'none' : 'block'; }
+        function openInfo() { const qs = Object.keys(QUEUE_CONFIG); document.getElementById('tg-grid').innerHTML = qs.map(q => `<a href="${LINKS.tg[q]}" target="_blank" class="grid-item" style="background:${QUEUE_CONFIG[q].color}">${q}</a>`).join(''); document.getElementById('vb-grid').innerHTML = qs.map(q => `<a href="${LINKS.vb[q]}" target="_blank" class="grid-item" style="background:${QUEUE_CONFIG[q].color}">${q}</a>`).join(''); showScreen('main'); toggleModal('infoModal'); }
         function showScreen(id) { document.querySelectorAll('.modal-screen').forEach(s => s.classList.remove('active')); document.getElementById('screen-'+id).classList.add('active'); }
         function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display === 'flex')? 'none' : 'flex'; }
         function toggleMenu() { const m = document.getElementById('qMenu'); m.style.display = (m.style.display === 'flex')? 'none' : 'flex'; }
@@ -252,7 +217,8 @@
         map.on('click', () => { document.getElementById('qMenu').style.display = 'none'; });
 
         async function init() {
-            await updateGlobals();
+            const globalRows = await updateGlobals();
+            setupNezlamnist(globalRows);
             for(let q in QUEUE_CONFIG) await fetchQueue(q);
             renderMenu();
         }
