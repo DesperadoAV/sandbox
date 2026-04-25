@@ -171,7 +171,10 @@
             { name: "Школа 3", lat: 51.517586, lng: 30.754901 }
         ];
 
-        let map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);
+        /*let map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);*/
+        const bounds = [[51.5000, 30.7000],[51.5500, 30.8200]];
+        let map = L.map('map', {zoomControl: false, maxBounds: bounds, maxBoundsViscosity: 1.0}).setView([51.5229, 30.7598], 15); 
+        map.setMinZoom(14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         let layers = {}, sheetData = {}, markersStore = {};
