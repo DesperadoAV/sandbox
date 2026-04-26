@@ -15,25 +15,24 @@
         
         #top-alert { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 2000; background: #fff3cd; color: #856404; padding: 10px 20px; border-radius: 30px; font-weight: bold; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ffeeba; display: none; text-align: center; max-width: 85%; }
 
-        .ui-btn { position: absolute; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; }
-        .side-btn { left: 15px; top: 15px; width: 48px; height: 48px; }
-        .info-btn { left: 15px; top: 75px; width: 48px; height: 48px; color: #228BE6; font-size: 20px; font-weight: bold; }
-        .graph-btn { left: 15px; top: 135px; width: 48px; height: 48px; }
-        .forecast-btn { left: 15px; top: 195px; width: 48px; height: 48px; font-size: 22px; }
+        .ui-btn { position: absolute; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; width: 48px; height: 48px; user-select: none; -webkit-user-select: none; }
+        .side-btn { left: 15px; top: 15px; }
+        .info-btn { left: 15px; top: 75px; color: #228BE6; font-size: 20px; font-weight: bold; }
+        .graph-btn { left: 15px; top: 135px; }
+        .forecast-btn { left: 15px; top: 195px; font-size: 22px; }
         
         .zoom-ctrl { position: absolute; right: 15px; bottom: 30px; z-index: 1001; display: flex; flex-direction: column; gap: 8px; }
-        .z-btn { width: 44px; height: 44px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; }
+        .z-btn { width: 44px; height: 44px; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; cursor: pointer; user-select: none; -webkit-user-select: none; }
         
         .nez-wrap { width: 100%; height: 100%; background: white; border: 2px solid #2c3e50; border-radius: 50%; overflow: hidden; display: flex; align-items: center; justify-content: center; }
         .nez-wrap img { width: 80%; height: 80%; object-fit: contain; }
 
         .q-menu { position: absolute; left: 75px; top: 15px; width: 280px; max-height: 85vh; background: white; border-radius: 16px; display: none; flex-direction: column; z-index: 1001; box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden; }
         #menu-list { overflow-y: auto; flex: 1; }
-        .q-header { display: flex; align-items: center; padding: 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-weight: bold; justify-content: space-between; }
+        .q-header { display: flex; align-items: center; padding: 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-weight: bold; justify-content: space-between; user-select: none; -webkit-user-select: none; }
         .q-header:hover { background: #f8f9fa; }
         .q-info-box { display: flex; align-items: center; }
         .q-color-box { width: 12px; height: 12px; border-radius: 3px; margin-right: 10px; }
-        .q-toggle-icon { font-size: 10px; color: #999; }
         
         .address-list { display: none; background: #f9f9f9; }
         .address-item { padding: 10px 15px 10px 20px; border-bottom: 1px solid #eee; cursor: pointer; font-size: 13px; color: #555; }
@@ -42,19 +41,17 @@
         .modal-content { background: white; border-radius: 28px; padding: 25px; width: 100%; max-width: 400px; text-align: center; position: relative; max-height: 85vh; display: flex; flex-direction: column; }
         .info-page { display: none; flex-direction: column; overflow-y: auto; }
         .info-page.active { display: flex; }
-        .ui-btn, .z-btn, .q-header {user-select: none; -webkit-user-select: none;}
         
         .close-x { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #ccc; cursor: pointer; border: none; background: none; z-index: 10; }
         .modal-title { color: #228BE6; font-size: 22px; font-weight: bold; margin-bottom: 15px; }
         .modal-text { font-size: 14px; color: #333 !important; line-height: 1.4; margin-bottom: 12px; text-align: left; }
         
-        .nav-btn { display: flex; align-items: center; gap: 12px; padding: 14px; margin: 8px 0; background: #f8f9fa; border-radius: 15px; text-decoration: none; color: #333; font-weight: bold; cursor: pointer; border: 1px solid #eee; }
-        .channel-item { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #eee; text-decoration: none; color: #333; font-size: 14px; width: 100%; box-sizing: border-box; }
+        .nav-btn, .channel-item { display: flex; align-items: center; padding: 14px; background: #f8f9fa; border-radius: 15px; text-decoration: none; color: #333; font-weight: bold; cursor: pointer; border: 1px solid #eee; margin: 8px 0; }
+        .channel-item { justify-content: space-between; border: none; border-bottom: 1px solid #eee; border-radius: 0; margin: 0; font-size: 14px; }
         .channel-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; }
         .back-btn { align-self: flex-start; background: none; border: none; color: #228BE6; font-weight: bold; cursor: pointer; padding: 5px; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
         
         .status-legend { background: #f0f7ff; padding: 10px; border-radius: 12px; margin-top: 10px; border: 1px dashed #228BE6; }
-        
     </style>
 </head>
 <body>
@@ -80,51 +77,43 @@
     <div class="modal" id="infoModal" onclick="toggleModal('infoModal')">
         <div class="modal-content" onclick="event.stopPropagation()">
             <button class="close-x" onclick="toggleModal('infoModal')">×</button>
-
             <div id="page-main" class="info-page active">
                 <span class="modal-title">Svitlo Slavutych</span>
                 <p class="modal-text"><b>Як користуватися мапою:</b></p>
-                <p class="modal-text">📍 <span style="color:#228BE6; font-weight:bold;">Кольоровий маркер</span> — за даними графіків та звітів світло зараз Є.</p>
-                <p class="modal-text">📍 <span style="color:#888; font-weight:bold;">Сірий маркер</span> — за графіком або повідомленнями світло ВІДСУТНЄ.</p>
+                <p class="modal-text">📍 <span style="color:#228BE6; font-weight:bold;">Кольоровий маркер</span> — світло зараз Є.</p>
+                <p class="modal-text">📍 <span style="color:#888; font-weight:bold;">Сірий маркер</span> — світло ВІДСУТНЄ.</p>
                 <div class="status-legend">
-                    <p class="modal-text" style="margin-bottom:0; font-size:12px;">Ви можете вимикати відображення окремих черг у меню зліва (іконка шарів).</p>
+                    <p class="modal-text" style="margin-bottom:0; font-size:12px;">Вимикайте окремі черги в меню шарів.</p>
                 </div>
-                
                 <div style="margin-top:20px;">
-                    <div class="nav-btn" onclick="showPage('page-tg')">
-                        <img src="https://img.icons8.com/color/24/telegram-app.png"> Telegram канали
-                    </div>
-                    <div class="nav-btn" onclick="showPage('page-vb')">
-                        <img src="https://img.icons8.com/color/24/viber.png"> Viber канали
-                    </div>
+                    <div class="nav-btn" onclick="showPage('page-tg')"><img src="https://img.icons8.com/color/24/telegram-app.png"> Telegram канали</div>
+                    <div class="nav-btn" onclick="showPage('page-vb')"><img src="https://img.icons8.com/color/24/viber.png"> Viber канали</div>
                 </div>
             </div>
-
             <div id="page-tg" class="info-page">
                 <button class="back-btn" onclick="showPage('page-main')">← Назад</button>
                 <span class="modal-title" style="font-size: 18px;">Telegram канали</span>
                 <div style="overflow-y:auto;">
-                    <a href="https://t.me/svitlo_in_Slavutych_News" target="_blank" class="channel-item" onclick="event.stopPropagation()"><span>📢 Новини</span> 🔗</a>
-                    <a href="https://t.me/svitlo_in_Slavutych_1_1" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff0000"></div>Черга 1.1</div> 🔗</a>
-                    <a href="https://t.me/svitlo_in_Slavutych_2_1" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#3498db"></div>Черга 2.1</div> 🔗</a>
-                    <a href="https://t.me/svitlo_in_Slavutych_3_1" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#9900ff"></div>Черга 3.1</div> 🔗</a>
-                    <a href="https://t.me/svitlo_in_Slavutych_3_2" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ffcc00"></div>Черга 3.2</div> 🔗</a>
-                    <a href="https://t.me/svitlo_in_Slavutych_4_1" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff9900"></div>Черга 4.1</div> 🔗</a>
-                    <a href="https://t.me/svitlo_in_Slavutych_6_1" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#009933"></div>Черга 6.1</div> 🔗</a>
+                    <a href="https://t.me/svitlo_in_Slavutych_News" target="_blank" class="channel-item"><span>📢 Новини</span> 🔗</a>
+                    <a href="https://t.me/svitlo_in_Slavutych_1_1" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff0000"></div>Черга 1.1</div> 🔗</a>
+                    <a href="https://t.me/svitlo_in_Slavutych_2_1" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#3498db"></div>Черга 2.1</div> 🔗</a>
+                    <a href="https://t.me/svitlo_in_Slavutych_3_1" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#9900ff"></div>Черга 3.1</div> 🔗</a>
+                    <a href="https://t.me/svitlo_in_Slavutych_3_2" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ffcc00"></div>Черга 3.2</div> 🔗</a>
+                    <a href="https://t.me/svitlo_in_Slavutych_4_1" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff9900"></div>Черга 4.1</div> 🔗</a>
+                    <a href="https://t.me/svitlo_in_Slavutych_6_1" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#009933"></div>Черга 6.1</div> 🔗</a>
                 </div>
             </div>
-
             <div id="page-vb" class="info-page">
                 <button class="back-btn" onclick="showPage('page-main')">← Назад</button>
                 <span class="modal-title" style="font-size: 18px;">Viber канали</span>
                 <div style="overflow-y:auto;">
-                    <a href="https://invite.viber.com/?g2=AQBWONG%2BDtc6YVZaVt3j7%2BE73z2aD5aruhm7JFLEDXOExJuSOJZd6Ca2OsxdFHLo" target="_blank" class="channel-item" onclick="event.stopPropagation()"><span>📢 Новини</span> 🔗</a>
-                    <a href="https://invite.viber.com/?g2=AQAwYtpyJWoodlZaVSylf8qXJh%2BIkorI%2BUEIlSNEjLY97kwXcxRXWcee8Wt%2FJM%2FS" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff0000"></div>Черга 1.1</div> 🔗</a>
-                    <a href="https://invite.viber.com/?g2=AQBXEog0eJuMg1ZaVvzFZ14R%2Bq%2B3qDs5gmfU3pLXpwkPygNpg43EBTllJkScCQI6" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#3498db"></div>Черга 2.1</div> 🔗</a>
-                    <a href="https://invite.viber.com/?g2=AQA8UIh2a1ur71ZaVlCe5j56cKWAwAem1kuhxYeCg9xsUb8AFCKgRE5duiSA3fvW" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#9900ff"></div>Черга 3.1</div> 🔗</a>
-                    <a href="https://invite.viber.com/?g2=AQA9Od9EXDrYslZaNY2rHJ1v1t8S5lA9RGxcLlvDP4ujK3n%2BHMvVHzeWmldseJdN" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ffcc00"></div>Черга 3.2</div> 🔗</a>
-                    <a href="https://invite.viber.com/?g2=AQAr4i0FDuS0TlZaWDF6W2Hk%2BTDJrVrCLKTBQSvAwDb7JPuDYn0HE0WtouQyqIm7" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff9900"></div>Черга 4.1</div> 🔗</a>
-                    <a href="https://invite.viber.com/?g2=AQBP%2BePVKBjDBFZaVeCnWMT9gn%2Fl2vl2636E%2B9vRvecZjNegiPbNxN93KG90spyY" target="_blank" class="channel-item" onclick="event.stopPropagation()"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#009933"></div>Черга 6.1</div> 🔗</a>
+                    <a href="https://invite.viber.com/?g2=AQBWONG%2BDtc6YVZaVt3j7%2BE73z2aD5aruhm7JFLEDXOExJuSOJZd6Ca2OsxdFHLo" target="_blank" class="channel-item"><span>📢 Новини</span> 🔗</a>
+                    <a href="https://invite.viber.com/?g2=AQAwYtpyJWoodlZaVSylf8qXJh%2BIkorI%2BUEIlSNEjLY97kwXcxRXWcee8Wt%2FJM%2FS" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff0000"></div>Черга 1.1</div> 🔗</a>
+                    <a href="https://invite.viber.com/?g2=AQBXEog0eJuMg1ZaVvzFZ14R%2Bq%2B3qDs5gmfU3pLXpwkPygNpg43EBTllJkScCQI6" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#3498db"></div>Черга 2.1</div> 🔗</a>
+                    <a href="https://invite.viber.com/?g2=AQA8UIh2a1ur71ZaVlCe5j56cKWAwAem1kuhxYeCg9xsUb8AFCKgRE5duiSA3fvW" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#9900ff"></div>Черга 3.1</div> 🔗</a>
+                    <a href="https://invite.viber.com/?g2=AQA9Od9EXDrYslZaNY2rHJ1v1t8S5lA9RGxcLlvDP4ujK3n%2BHMvVHzeWmldseJdN" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ffcc00"></div>Черга 3.2</div> 🔗</a>
+                    <a href="https://invite.viber.com/?g2=AQAr4i0FDuS0TlZaWDF6W2Hk%2BTDJrVrCLKTBQSvAwDb7JPuDYn0HE0WtouQyqIm7" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#ff9900"></div>Черга 4.1</div> 🔗</a>
+                    <a href="https://invite.viber.com/?g2=AQBP%2BePVKBjDBFZaVeCnWMT9gn%2Fl2vl2636E%2B9vRvecZjNegiPbNxN93KG90spyY" target="_blank" class="channel-item"><div style="display:flex; align-items:center;"><div class="channel-color" style="background:#009933"></div>Черга 6.1</div> 🔗</a>
                 </div>
             </div>
         </div>
@@ -173,21 +162,17 @@
             { name: "Школа 3", lat: 51.517586, lng: 30.754901 }
         ];
 
-        /*let map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);*/
-        /* Налаштування мапи та автоматичне закриття меню */
-        const bounds = [[51.5000, 30.7000],[51.5500, 30.8200]];
-        let map = L.map('map', {zoomControl: false, maxBounds: bounds, maxBoundsViscosity: 1.0}).setView([51.5229, 30.7598], 15);
-        // Закриваємо меню при кліку на мапу
-        map.on('click', function() {
-            const menu = document.getElementById('qMenu');
-            if (window.getComputedStyle(menu).display === 'flex') {
-                menu.style.display = 'none';
-            }
-        });
-        map.setMinZoom(14);
+        let map = L.map('map', {
+            zoomControl: false, 
+            maxBounds: [[51.5000, 30.7000],[51.5500, 30.8200]], 
+            maxBoundsViscosity: 1.0,
+            minZoom: 14
+        }).setView([51.5229, 30.7598], 15);
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        map.on('click', () => document.getElementById('qMenu').style.display = 'none');
         
-        let layers = {}, sheetData = {}, markersStore = {};
+        let layers = {}, markersStore = {};
         let nezlamnistLayer = L.layerGroup().addTo(map);
 
         function getNezIcon(zoom) {
@@ -221,8 +206,8 @@
 
                 const alertText = rows[9]?.[2];
                 const alertEl = document.getElementById('top-alert');
-                if(alertText && alertText.trim() !== "") { alertEl.innerText = alertText; alertEl.style.display = 'block'; }
-                else { alertEl.style.display = 'none'; }
+                alertEl.innerText = alertText || "";
+                alertEl.style.display = (alertText && alertText.trim()) ? 'block' : 'none';
 
                 let fHtml = "";
                 for (let i = 1; i <= 6; i++) {
@@ -249,41 +234,36 @@
                 const res = await fetch(`https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${conf.gid}&t=${Date.now()}`);
                 const rows = (await res.text()).split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(c => c.replace(/"/g, '').trim()));
                 
-                // Якщо шару ще немає - створюємо, якщо є - не чіпаємо, просто очистимо
                 if(!layers[q]) layers[q] = L.layerGroup().addTo(map);
                 layers[q].clearLayers();
-                
-                sheetData[q] = []; markersStore[q] = {};
+                markersStore[q] = {};
+
                 for (let i = 2; i < rows.length; i++) {
                     const r = rows[i]; if(!r[3]) continue;
                     const isLight = (r[5]?.toLowerCase() === 'y');
                     const m = L.marker([parseFloat(r[3].replace(',','.')), parseFloat(r[4].replace(',','.'))], { icon: getQIcon(isLight ? conf.icon : "grey", map.getZoom()) });
                     m._isLight = isLight;
-                    const addressDesc = r[2] ? `<br><i>${r[2]}</i>` : ''; 
-                    m.bindPopup(`<b>${r[1]}</b>${addressDesc}<br>${isLight?'💡 Світло є':'🕯️ Світла немає'}<br><small>Оновлено: ${r[8]||''}</small>`);
+                    m.bindPopup(`<b>${r[1]}</b>${r[2] ? `<br><i>${r[2]}</i>` : ''}<br>${isLight?'💡 Світло є':'🕯️ Світла немає'}<br><small>Оновлено: ${r[8]||''}</small>`);
                     m.addTo(layers[q]);
-                    sheetData[q].push(r[1]); markersStore[q][r[1]] = m;
-                    
+                    markersStore[q][r[1]] = m;
                 }
-                sheetData[q].sort((a, b) => a.localeCompare(b, 'uk'));
             } catch(e) {}
         }
 
         function renderMenu() {
-            let html = `<div class="q-header" onclick="toggleAccordion('nez')"><div class="q-info-box"><div class="q-color-box" style="background:#2c3e50"></div><span>Пункти Незламності</span></div></div><div class="address-list" id="list-nez">${PUNKT_NEZLAMNOSTI.map(p => `<div class="address-item" style="border-left: 4px solid #2c3e50" onclick="focusNez('${p.lat}','${p.lng}')">${p.name}</div>`).join('')}</div>`;
+            let html = `<div class="q-header" onclick="toggleAccordion('nez')"><div class="q-info-box"><div class="q-color-box" style="background:#2c3e50"></div><span>Пункти Незламності</span></div></div><div class="address-list" id="list-nez">${PUNKT_NEZLAMNOSTI.map(p => `<div class="address-item" style="border-left: 4px solid #2c3e50" onclick="focusNez(${p.lat},${p.lng})">${p.name}</div>`).join('')}</div>`;
             
             for(let q in QUEUE_CONFIG) {
                 const col = QUEUE_CONFIG[q].color;
                 const isVisible = map.hasLayer(layers[q]);
-                html += `<div class="q-header"><div class="q-info-box" onclick="toggleAccordion('${q}')"><div class="q-color-box" style="background:${col}"></div><span>Черга ${q}</span></div><div onclick="toggleLayer('${q}')" style="cursor:pointer; padding: 5px;">${isVisible ? '👁️' : '❌'}</div></div><div class="address-list" id="list-${q}">${(sheetData[q]||[]).map(a => `<div class="address-item" style="border-left: 4px solid ${col}" onclick="focusAddr('${q}','${a}')">${a}</div>`).join('')}</div>`;
+                const addresses = Object.keys(markersStore[q] || {}).sort((a,b) => a.localeCompare(b, 'uk'));
+                html += `<div class="q-header"><div class="q-info-box" onclick="toggleAccordion('${q}')"><div class="q-color-box" style="background:${col}"></div><span>Черга ${q}</span></div><div onclick="toggleLayer('${q}')">${isVisible ? '👁️' : '❌'}</div></div><div class="address-list" id="list-${q}">${addresses.map(a => `<div class="address-item" style="border-left: 4px solid ${col}" onclick="focusAddr('${q}','${a}')">${a}</div>`).join('')}</div>`;
             }
             document.getElementById('menu-list').innerHTML = html;
         }
 
-        // ФУНКЦІЯ ПРИХОВУВАННЯ ЧЕРГИ
         function toggleLayer(q) {
-            if (map.hasLayer(layers[q])) { map.removeLayer(layers[q]); } 
-            else { map.addLayer(layers[q]); }
+            map.hasLayer(layers[q]) ? map.removeLayer(layers[q]) : map.addLayer(layers[q]);
             renderMenu();
         }
 
@@ -295,20 +275,10 @@
         }
 
         function focusAddr(q, a) { const m = markersStore[q][a]; if(m) { map.setView(m.getLatLng(), 18); m.openPopup(); document.getElementById('qMenu').style.display = 'none'; }}
-        function focusNez(lat, lng) {map.setView([lat, lng], 18); document.getElementById('qMenu').style.display = 'none'; }
+        function focusNez(lat, lng) { map.setView([lat, lng], 18); document.getElementById('qMenu').style.display = 'none'; }
         function toggleMenu() { const m = document.getElementById('qMenu'); m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; }
-        
-        function toggleModal(id) { 
-            const m = document.getElementById(id); 
-            const isVisible = m.style.display === 'flex';
-            m.style.display = isVisible ? 'none' : 'flex'; 
-            if(!isVisible && id === 'infoModal') showPage('page-main');
-        }
-
-        function showPage(pageId) {
-            document.querySelectorAll('.info-page').forEach(p => p.classList.remove('active'));
-            document.getElementById(pageId).classList.add('active');
-        }
+        function toggleModal(id) { const m = document.getElementById(id); m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; if(m.style.display === 'flex' && id === 'infoModal') showPage('page-main'); }
+        function showPage(pageId) { document.querySelectorAll('.info-page').forEach(p => p.classList.remove('active')); document.getElementById(pageId).classList.add('active'); }
 
         updateData();
         setInterval(updateData, 60000);
