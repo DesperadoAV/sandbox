@@ -42,6 +42,7 @@
         .modal-content { background: white; border-radius: 28px; padding: 25px; width: 100%; max-width: 400px; text-align: center; position: relative; max-height: 85vh; display: flex; flex-direction: column; }
         .info-page { display: none; flex-direction: column; overflow-y: auto; }
         .info-page.active { display: flex; }
+        .ui-btn, .z-btn, .q-header {user-select: none; -webkit-user-select: none;}
         
         .close-x { position: absolute; top: 15px; right: 20px; font-size: 24px; color: #ccc; cursor: pointer; border: none; background: none; z-index: 10; }
         .modal-title { color: #228BE6; font-size: 22px; font-weight: bold; margin-bottom: 15px; }
@@ -53,6 +54,7 @@
         .back-btn { align-self: flex-start; background: none; border: none; color: #228BE6; font-weight: bold; cursor: pointer; padding: 5px; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
         
         .status-legend { background: #f0f7ff; padding: 10px; border-radius: 12px; margin-top: 10px; border: 1px dashed #228BE6; }
+        
     </style>
 </head>
 <body>
@@ -172,11 +174,19 @@
         ];
 
         /*let map = L.map('map', { zoomControl: false }).setView([51.5229, 30.7598], 15);*/
+        /* Налаштування мапи та автоматичне закриття меню */
         const bounds = [[51.5000, 30.7000],[51.5500, 30.8200]];
-        let map = L.map('map', {zoomControl: false, maxBounds: bounds, maxBoundsViscosity: 1.0}).setView([51.5229, 30.7598], 15); 
+        let map = L.map('map', {zoomControl: false, maxBounds: bounds, maxBoundsViscosity: 1.0}).setView([51.5229, 30.7598], 15);
+        // Закриваємо меню при кліку на мапу
+        map.on('click', function() {
+            const menu = document.getElementById('qMenu');
+            if (window.getComputedStyle(menu).display === 'flex') {
+                menu.style.display = 'none';
+            }
+        });
         map.setMinZoom(14);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-
+        
         let layers = {}, sheetData = {}, markersStore = {};
         let nezlamnistLayer = L.layerGroup().addTo(map);
 
@@ -253,7 +263,9 @@
                     m.bindPopup(`<b>${r[1]}</b>${addressDesc}<br>${isLight?'💡 Світло є':'🕯️ Світла немає'}<br><small>Оновлено: ${r[8]||''}</small>`);
                     m.addTo(layers[q]);
                     sheetData[q].push(r[1]); markersStore[q][r[1]] = m;
+                    
                 }
+                sheetData[q].sort((a, b) => a.localeCompare(b, 'uk'));
             } catch(e) {}
         }
 
@@ -282,8 +294,8 @@
             el.style.display = state ? 'none' : 'block';
         }
 
-        function focusAddr(q, a) { const m = markersStore[q][a]; if(m) { map.setView(m.getLatLng(), 18); m.openPopup(); toggleMenu(); } }
-        function focusNez(lat, lng) { map.setView([lat, lng], 18); toggleMenu(); }
+        function focusAddr(q, a) { const m = markersStore[q][a]; if(m) { map.setView(m.getLatLng(), 18); m.openPopup(); document.getElementById('qMenu').style.display = 'none'; }}
+        function focusNez(lat, lng) {map.setView([lat, lng], 18); document.getElementById('qMenu').style.display = 'none'; }
         function toggleMenu() { const m = document.getElementById('qMenu'); m.style.display = (m.style.display === 'flex') ? 'none' : 'flex'; }
         
         function toggleModal(id) { 
