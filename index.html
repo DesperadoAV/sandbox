@@ -13,15 +13,13 @@
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
         
-        /* Оновлений стиль для багаторядкових сповіщень */
         #top-alert { 
             position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
             z-index: 2000; background: #fff3cd; color: #856404; padding: 10px 20px; 
             border-radius: 20px; font-weight: bold; font-size: 13px; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ffeeba; 
             display: none; text-align: center; max-width: 85%; 
-            white-space: pre-wrap; /* Зберігає переноси рядків */
-            word-wrap: break-word;
+            white-space: pre-wrap; word-wrap: break-word;
         }
 
         .ui-btn { position: absolute; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; width: 48px; height: 48px; user-select: none; -webkit-user-select: none; }
@@ -58,14 +56,13 @@
         .nav-btn, .channel-item { display: flex; align-items: center; padding: 14px; background: #f8f9fa; border-radius: 15px; text-decoration: none; color: #333; font-weight: bold; cursor: pointer; border: 1px solid #eee; margin: 8px 0; }
         .channel-item { justify-content: space-between; border: none; border-bottom: 1px solid #eee; border-radius: 0; margin: 0; font-size: 14px; }
         .channel-color { width: 12px; height: 12px; border-radius: 50%; margin-right: 10px; }
-        .back-btn { align-self: flex-start; background: none; border: none; color: #228BE6; font-weight: bold; cursor: pointer; padding: 5px; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
+        .back-btn { align-self: flex-start; background: none; border: none; color: #228BE6; font-weight: bold; cursor: padding: 5px; margin-bottom: 10px; display: flex; align-items: center; gap: 5px; }
         
         .status-legend { background: #f0f7ff; padding: 10px; border-radius: 12px; margin-top: 10px; border: 1px dashed #228BE6; }
     </style>
 </head>
 <body>
-    <img src="https://script.google.com/macros/s/AKfycbyyaj7xfeUZXnWyLeUUrKBxgg8H-OXFdSFX010kYj3WAAVt3CXbsRpO21-GutSjOOuB/exec" style="display:none;" onerror="this.src=this.src+'?t='+Date.now()">
-    
+        
     <div id="top-alert"></div>
     <div id="map"></div>
 
@@ -209,6 +206,22 @@
             for(let q in layers) layers[q].eachLayer(m => m.setIcon(getQIcon(m._isLight ? QUEUE_CONFIG[q].icon : "grey", z)));
         });
 
+        // --- ЛОГІКА ОДНОРАЗОВОГО ЛІЧИЛЬНИКА ---
+        function triggerCounter() {
+            if (!sessionStorage.getItem('was_counted')) {
+                const img = new Image();
+                img.src = "https://script.google.com/macros/s/AKfycbyyaj7xfeUZXnWyLeUUrKBxgg8H-OXFdSFX010kYj3WAAVt3CXbsRpO21-GutSjOOuB/exec?t=" + Date.now();
+                
+                img.onload = function() {
+                    sessionStorage.setItem('was_counted', 'true');
+                    console.log("Відвідування успішно зафіксовано");
+                };
+            }
+        }
+
+        // Запуск після завантаження всього ресурсу
+        window.addEventListener('load', triggerCounter);
+        
         async function updateData() {
             try {
                 const res = await fetch(`https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${MAP_DATA_GID}&t=${Date.now()}`);
@@ -220,20 +233,18 @@
                     return text.trim().replace(/^"|"$/g, '').replace(/""/g, '"');
                 };
 
-                // Сповіщення
                 const autoText = rows[9]?.[2] ? cleanText(rows[9][2]) : "";
                 const manualText = rows[9]?.[3] ? cleanText(rows[9][3]) : "";
                 const finalAlertText = (manualText !== "") ? manualText : autoText;
 
                 const alertEl = document.getElementById('top-alert');
                 if (finalAlertText && finalAlertText !== "") {
-                    alertEl.innerText = finalAlertText; // Зберігає переноси
+                    alertEl.innerText = finalAlertText;
                     alertEl.style.display = 'block';
                 } else {
                     alertEl.style.display = 'none';
                 }
 
-                // Прогноз
                 let fHtml = "";
                 for (let i = 1; i <= 6; i++) {
                     const r = rows[i];
@@ -250,7 +261,6 @@
                 }
                 document.getElementById('forecast-list').innerHTML = fHtml;
 
-                // Пункти незламності
                 nezlamnistLayer.clearLayers();
                 PUNKT_NEZLAMNOSTI.forEach((p, i) => {
                     const r = rows[13 + i];
