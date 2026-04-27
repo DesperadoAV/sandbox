@@ -1,4 +1,4 @@
-    <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="uk">
 <head>
     <meta charset="UTF-8">
@@ -13,7 +13,16 @@
         body, html { margin: 0; padding: 0; height: 100%; width: 100%; overflow: hidden; background: #1a1a1a; font-family: sans-serif; }
         #map { position: absolute; top: 0; bottom: 0; width: 100%; z-index: 1; }
         
-        #top-alert { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); z-index: 2000; background: #fff3cd; color: #856404; padding: 10px 20px; border-radius: 30px; font-weight: bold; font-size: 13px; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ffeeba; display: none; text-align: center; max-width: 85%; }
+        /* Оновлений стиль для багаторядкових сповіщень */
+        #top-alert { 
+            position: absolute; top: 10px; left: 50%; transform: translateX(-50%); 
+            z-index: 2000; background: #fff3cd; color: #856404; padding: 10px 20px; 
+            border-radius: 20px; font-weight: bold; font-size: 13px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); border: 2px solid #ffeeba; 
+            display: none; text-align: center; max-width: 85%; 
+            white-space: pre-wrap; /* Зберігає переноси рядків */
+            word-wrap: break-word;
+        }
 
         .ui-btn { position: absolute; background: white; border-radius: 12px; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1001; box-shadow: 0 4px 15px rgba(0,0,0,0.3); border: none; width: 48px; height: 48px; user-select: none; -webkit-user-select: none; }
         .side-btn { left: 15px; top: 15px; }
@@ -55,7 +64,8 @@
     </style>
 </head>
 <body>
-
+    <img src="https://script.google.com/macros/s/AKfycbyyaj7xfeUZXnWyLeUUrKBxgg8H-OXFdSFX010kYj3WAAVt3CXbsRpO21-GutSjOOuB/exec" style="display:none;" onerror="this.src=this.src+'?t='+Date.now()">
+    
     <div id="top-alert"></div>
     <div id="map"></div>
 
@@ -200,69 +210,61 @@
         });
 
         async function updateData() {
-    try {
-        // Отримуємо дані з аркуша MapData
-        const res = await fetch(`https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${MAP_DATA_GID}&t=${Date.now()}`);
-        const csvText = await res.text();
-        const rows = csvText.split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
+            try {
+                const res = await fetch(`https://docs.google.com/spreadsheets/d/e/${DOC_ID}/pub?output=csv&gid=${MAP_DATA_GID}&t=${Date.now()}`);
+                const csvText = await res.text();
+                const rows = csvText.split(/\r?\n/).map(r => r.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/));
 
-        // --- 1. ОБРОБКА СПОВІЩЕННЯ (TOP-ALERT) ---
-        // rows[9] — це 10-й рядок таблиці (C10 та D10)
-        const autoText = rows[9]?.[2] ? rows[9][2].replace(/"/g, '').trim() : "";
-        const manualText = rows[9]?.[3] ? rows[9][3].replace(/"/g, '').trim() : "";
-        
-        // Пріоритет: якщо ручне (D10) не порожнє — беремо його, інакше автоматичне (C10)
-        const finalAlertText = (manualText !== "") ? manualText : autoText;
+                const cleanText = (text) => {
+                    if (!text) return "";
+                    return text.trim().replace(/^"|"$/g, '').replace(/""/g, '"');
+                };
 
-        const alertEl = document.getElementById('top-alert');
-        if (finalAlertText && finalAlertText !== "") {
-            alertEl.innerText = finalAlertText;
-            alertEl.style.display = 'block';
-        } else {
-            alertEl.style.display = 'none';
+                // Сповіщення
+                const autoText = rows[9]?.[2] ? cleanText(rows[9][2]) : "";
+                const manualText = rows[9]?.[3] ? cleanText(rows[9][3]) : "";
+                const finalAlertText = (manualText !== "") ? manualText : autoText;
+
+                const alertEl = document.getElementById('top-alert');
+                if (finalAlertText && finalAlertText !== "") {
+                    alertEl.innerText = finalAlertText; // Зберігає переноси
+                    alertEl.style.display = 'block';
+                } else {
+                    alertEl.style.display = 'none';
+                }
+
+                // Прогноз
+                let fHtml = "";
+                for (let i = 1; i <= 6; i++) {
+                    const r = rows[i];
+                    if (r) {
+                        const qNum = r[0];
+                        const statusInfo = cleanText(r[2]);
+                        const manualInfo = cleanText(r[3]);
+                        const color = QUEUE_CONFIG[qNum]?.color || "#333";
+                        fHtml += `<div style="background:${color}; color:white; margin-bottom:8px; padding:12px; border-radius:12px; display:flex; justify-content:space-between; font-size:14px;">
+                                    <b>Черга ${qNum}</b> 
+                                    <span>${statusInfo} ${manualInfo}</span>
+                                  </div>`;
+                    }
+                }
+                document.getElementById('forecast-list').innerHTML = fHtml;
+
+                // Пункти незламності
+                nezlamnistLayer.clearLayers();
+                PUNKT_NEZLAMNOSTI.forEach((p, i) => {
+                    const r = rows[13 + i];
+                    const info = r?.[2] ? cleanText(r[2]) : 'Інформація уточнюється';
+                    const workTime = r?.[3] ? cleanText(r[3]) : '';
+                    const popup = `<b>🏠 ${p.name}</b><br><div style="background:#eef2f7; padding:8px; border-radius:8px; margin-top:5px; font-size:12px; white-space: pre-wrap;">${info}<br><b>${workTime}</b></div>`;
+                    L.marker([p.lat, p.lng], { icon: getNezIcon(map.getZoom()) }).bindPopup(popup).addTo(nezlamnistLayer);
+                });
+
+                for (let q in QUEUE_CONFIG) await fetchQueue(q);
+                renderMenu();
+
+            } catch (e) { console.error("Помилка оновлення даних:", e); }
         }
-
-        // --- 2. ОБРОБКА ПРОГНОЗУ ЧЕРГ (FORECAST) ---
-        let fHtml = "";
-        for (let i = 1; i <= 6; i++) {
-            const r = rows[i];
-            if (r) {
-                const qNum = r[0]; // Номер черги
-                const statusInfo = r[2] || ""; // Текст статусу (напр. "включать о 12:00")
-                const manualInfo = r[3] || ""; // Додаткове ручне інфо
-                const color = QUEUE_CONFIG[qNum]?.color || "#333";
-                
-                fHtml += `<div style="background:${color}; color:white; margin-bottom:8px; padding:12px; border-radius:12px; display:flex; justify-content:space-between; font-size:14px;">
-                            <b>Черга ${qNum}</b> 
-                            <span>${statusInfo} ${manualInfo}</span>
-                          </div>`;
-            }
-        }
-        document.getElementById('forecast-list').innerHTML = fHtml;
-
-        // --- 3. ПУНКТИ НЕЗЛАМНОСТІ ---
-        nezlamnistLayer.clearLayers();
-        PUNKT_NEZLAMNOSTI.forEach((p, i) => {
-            // Дані для пунктів починаються з 14-го рядка (індекс 13)
-            const r = rows[13 + i];
-            const info = r?.[2] || 'Інформація уточнюється';
-            const workTime = r?.[3] || '';
-            const popup = `<b>🏠 ${p.name}</b><br><div style="background:#eef2f7; padding:8px; border-radius:8px; margin-top:5px; font-size:12px;">${info}<br><b>${workTime}</b></div>`;
-            L.marker([p.lat, p.lng], { icon: getNezIcon(map.getZoom()) }).bindPopup(popup).addTo(nezlamnistLayer);
-        });
-
-        // --- 4. ОНОВЛЕННЯ МАРКЕРІВ АДРЕС (ПО ЧЕРГАХ) ---
-        for (let q in QUEUE_CONFIG) {
-            await fetchQueue(q);
-        }
-        
-        // Оновлюємо меню шарів
-        renderMenu();
-
-    } catch (e) {
-        console.error("Помилка оновлення даних:", e);
-    }
-}
 
         async function fetchQueue(q) {
             const conf = QUEUE_CONFIG[q];
@@ -288,7 +290,6 @@
 
         function renderMenu() {
             let html = `<div class="q-header" onclick="toggleAccordion('nez')"><div class="q-info-box"><div class="q-color-box" style="background:#2c3e50"></div><span>Пункти Незламності</span></div></div><div class="address-list" id="list-nez">${PUNKT_NEZLAMNOSTI.map(p => `<div class="address-item" style="border-left: 4px solid #2c3e50" onclick="focusNez(${p.lat},${p.lng})">${p.name}</div>`).join('')}</div>`;
-            
             for(let q in QUEUE_CONFIG) {
                 const col = QUEUE_CONFIG[q].color;
                 const isVisible = map.hasLayer(layers[q]);
